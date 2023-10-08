@@ -2672,10 +2672,9 @@ public static class cb
 
     public static void Main()
     {
-// Disable original SQLite3 and SQLCipher for now
-//        write_e_sqlite3();
+        write_e_sqlite3();
         write_e_sqlite3mc();
-//        write_e_sqlcipher();
+        write_e_sqlcipher();
         //write_sqlcipher_apple_cc();
     }
 }
