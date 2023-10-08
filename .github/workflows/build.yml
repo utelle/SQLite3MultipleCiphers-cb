@@ -2,11 +2,11 @@ name: Build
 
 on:
   push:
-    branches: [ sqlite3mc ]
+    branches: [ master, sqlite3mc ]
     paths-ignore:
     - 'bld/bin/**'
   pull_request:
-    branches: [ sqlite3mc ]
+    branches: [ master, sqlite3mc ]
     paths-ignore:
     - 'bld/bin/**'
 
