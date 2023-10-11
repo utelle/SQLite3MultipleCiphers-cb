@@ -1603,11 +1603,11 @@ public static class cb
 				{ "SQLITE_DQS", "0" },
 				{ "SQLITE_SECURE_DELETE", "1" },
 				{ "SQLITE_ENABLE_EXTFUNC", "1" },
-				{ "SQLITE_ENABLE_GEOPOLY", "1" },
-				{ "SQLITE_ENABLE_REGEXP", "1" },
-				{ "SQLITE_ENABLE_SERIES", "1" },
-				{ "SQLITE_ENABLE_SHA3", "1" },
-				{ "SQLITE_ENABLE_UUID", "1" },
+//				{ "SQLITE_ENABLE_GEOPOLY", "1" },
+//				{ "SQLITE_ENABLE_REGEXP", "1" },
+//				{ "SQLITE_ENABLE_SERIES", "1" },
+//				{ "SQLITE_ENABLE_SHA3", "1" },
+//				{ "SQLITE_ENABLE_UUID", "1" },
 			};
 
 			add_basic_sqlite3_defines(defines);
@@ -1637,11 +1637,11 @@ public static class cb
 				{ "SQLITE_DQS", "0" },
 				{ "SQLITE_SECURE_DELETE", "1" },
 				{ "SQLITE_ENABLE_EXTFUNC", "1" },
-				{ "SQLITE_ENABLE_GEOPOLY", "1" },
-				{ "SQLITE_ENABLE_REGEXP", "1" },
-				{ "SQLITE_ENABLE_SERIES", "1" },
-				{ "SQLITE_ENABLE_SHA3", "1" },
-				{ "SQLITE_ENABLE_UUID", "1" },
+//				{ "SQLITE_ENABLE_GEOPOLY", "1" },
+//				{ "SQLITE_ENABLE_REGEXP", "1" },
+//				{ "SQLITE_ENABLE_SERIES", "1" },
+//				{ "SQLITE_ENABLE_SHA3", "1" },
+//				{ "SQLITE_ENABLE_UUID", "1" },
 			};
 			add_basic_sqlite3_defines(defines);
 			add_linux_sqlite3_defines(defines);
@@ -1701,11 +1701,11 @@ public static class cb
 				{ "SQLITE_DQS", "0" },
 				{ "SQLITE_SECURE_DELETE", "1" },
 				{ "SQLITE_ENABLE_EXTFUNC", "1" },
-				{ "SQLITE_ENABLE_GEOPOLY", "1" },
-				{ "SQLITE_ENABLE_REGEXP", "1" },
-				{ "SQLITE_ENABLE_SERIES", "1" },
-				{ "SQLITE_ENABLE_SHA3", "1" },
-				{ "SQLITE_ENABLE_UUID", "1" },
+//				{ "SQLITE_ENABLE_GEOPOLY", "1" },
+//				{ "SQLITE_ENABLE_REGEXP", "1" },
+//				{ "SQLITE_ENABLE_SERIES", "1" },
+//				{ "SQLITE_ENABLE_SHA3", "1" },
+//				{ "SQLITE_ENABLE_UUID", "1" },
 			};
 			add_basic_sqlite3_defines(defines);
 			add_android_sqlite3_defines(defines);
@@ -1755,11 +1755,11 @@ public static class cb
 				{ "SQLITE_DQS", "0" },
 				{ "SQLITE_SECURE_DELETE", "1" },
 				{ "SQLITE_ENABLE_EXTFUNC", "1" },
-				{ "SQLITE_ENABLE_GEOPOLY", "1" },
-				{ "SQLITE_ENABLE_REGEXP", "1" },
-				{ "SQLITE_ENABLE_SERIES", "1" },
-				{ "SQLITE_ENABLE_SHA3", "1" },
-				{ "SQLITE_ENABLE_UUID", "1" },
+//				{ "SQLITE_ENABLE_GEOPOLY", "1" },
+//				{ "SQLITE_ENABLE_REGEXP", "1" },
+//				{ "SQLITE_ENABLE_SERIES", "1" },
+//				{ "SQLITE_ENABLE_SHA3", "1" },
+//				{ "SQLITE_ENABLE_UUID", "1" },
 			};
             add_basic_sqlite3_defines(defines);
             add_wasm_sqlite3_defines(defines);
@@ -1787,11 +1787,11 @@ public static class cb
 				{ "SQLITE_DQS", "0" },
 				{ "SQLITE_SECURE_DELETE", "1" },
 				{ "SQLITE_ENABLE_EXTFUNC", "1" },
-				{ "SQLITE_ENABLE_GEOPOLY", "1" },
-				{ "SQLITE_ENABLE_REGEXP", "1" },
-				{ "SQLITE_ENABLE_SERIES", "1" },
-				{ "SQLITE_ENABLE_SHA3", "1" },
-				{ "SQLITE_ENABLE_UUID", "1" },
+//				{ "SQLITE_ENABLE_GEOPOLY", "1" },
+//				{ "SQLITE_ENABLE_REGEXP", "1" },
+//				{ "SQLITE_ENABLE_SERIES", "1" },
+//				{ "SQLITE_ENABLE_SHA3", "1" },
+//				{ "SQLITE_ENABLE_UUID", "1" },
 			};
 			add_basic_sqlite3_defines(defines);
 			add_ios_sqlite3_defines(defines);
