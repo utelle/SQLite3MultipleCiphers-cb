@@ -17,10 +17,10 @@ jobs:
         os: [ubuntu-20.04, macos-latest, windows-2019]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: "cb"
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         repository: libtom/libtomcrypt
         path: "libtomcrypt"
@@ -34,7 +34,7 @@ jobs:
       with:
         ndk-version: r21e
     - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 3.1.x
     - name: Generate script
@@ -98,7 +98,7 @@ jobs:
           cmd /C $f
         }
       working-directory: cb/bld
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: bin-${{ matrix.os }}
         path: cb/bld/bin
@@ -113,20 +113,20 @@ jobs:
         - '{ "tfm": "net8.0", "emsdk": "3.1.34" }' # eol: 2026-11-14
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         path: "cb"
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         repository: libtom/libtomcrypt
         path: "libtomcrypt"
         ref: "v1.18.2"
     - name: Setup Emscripten
-      uses: mymindstorm/setup-emsdk@v11
+      uses: mymindstorm/setup-emsdk@v12
       with:
         version: ${{ fromJSON(matrix.config).emsdk }}
     - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 3.1.x
     - name: Generate script
@@ -146,7 +146,7 @@ jobs:
           bash "$f" ${{ fromJSON(matrix.config).tfm }}
         done
       working-directory: cb/bld
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: bin-wasm-${{ fromJSON(matrix.config).tfm }}
         path: cb/bld/bin
@@ -161,10 +161,10 @@ jobs:
 #        os: [windows-2019]
 #    runs-on: ${{ matrix.os }}
 #    steps:
-#    - uses: actions/checkout@v2
+#    - uses: actions/checkout@v3
 #      with:
 #        path: "cb"
-#    - uses: actions/checkout@v2
+#    - uses: actions/checkout@v3
 #      with:
 #        fetch-depth: 0
 #        repository: ericsink/SQLitePCL.raw
@@ -177,27 +177,27 @@ jobs:
 #      if: startsWith(matrix.os, 'windows')
 #      run: rm bin -r -fo
 #      working-directory: cb/bld
-#    - uses: actions/download-artifact@v2
+#    - uses: actions/download-artifact@v3
 #      with:
 #        name: bin-ubuntu-20.04
 #        path: cb/bld/bin
-#    - uses: actions/download-artifact@v2
+#    - uses: actions/download-artifact@v3
 #      with:
 #        name: bin-macos-latest
 #        path: cb/bld/bin
-#    - uses: actions/download-artifact@v2
+#    - uses: actions/download-artifact@v3
 #      with:
 #        name: bin-windows-2019
 #        path: cb/bld/bin
-#    - uses: actions/download-artifact@v2
+#    - uses: actions/download-artifact@v3
 #      with:
 #        name: bin-wasm-net6.0
 #        path: cb/bld/bin
-#    - uses: actions/download-artifact@v2
+#    - uses: actions/download-artifact@v3
 #      with:
 #        name: bin-wasm-net7.0
 #        path: cb/bld/bin
-#    - uses: actions/download-artifact@v2
+#    - uses: actions/download-artifact@v3
 #      with:
 #        name: bin-wasm-net8.0
 #        path: cb/bld/bin
@@ -207,7 +207,7 @@ jobs:
 #      with:
 #        java-version: 11
 #    - name: Setup .NET 6
-#      uses: actions/setup-dotnet@v1
+#      uses: actions/setup-dotnet@v3
 #      with:
 #        dotnet-version: 6.0.x
 #    - name: Install workload ios
@@ -217,11 +217,11 @@ jobs:
 #    - name: Install workload tvos
 #      run: dotnet workload install tvos
 #    - name: Setup .NET 5
-#      uses: actions/setup-dotnet@v1
+#      uses: actions/setup-dotnet@v3
 #      with:
 #        dotnet-version: 5.0.x
 #    - name: Setup .NET 3.1
-#      uses: actions/setup-dotnet@v1
+#      uses: actions/setup-dotnet@v3
 #      with:
 #        dotnet-version: 3.1.x
 #    - name: Install T4
@@ -236,7 +236,7 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Clean output directory
@@ -245,27 +245,27 @@ jobs:
         rm -fr bin/e_sqlite3mc
         rm -fr bin/e_sqlcipher
       working-directory: bld
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: bin-ubuntu-20.04
         path: bld/bin
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: bin-macos-latest
         path: bld/bin
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: bin-windows-2019
         path: bld/bin
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: bin-wasm-net6.0
         path: bld/bin
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: bin-wasm-net7.0
         path: bld/bin
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: bin-wasm-net8.0
         path: bld/bin
