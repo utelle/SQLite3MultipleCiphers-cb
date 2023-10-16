@@ -81,6 +81,10 @@ jobs:
         ndk-build
         mkdir -p ../bin/e_sqlcipher/android
         cp -r libs/* ../bin/e_sqlcipher/android
+        cd ../android_sqlite3mc
+        ndk-build
+        mkdir -p ../bin/sqlite3mc/android
+        cp -r libs/* ../bin/sqlite3mc/android
       working-directory: cb/bld
     - name: Build (macOS, iOS, tvOS)
       if: startsWith(matrix.os, 'macos')
@@ -93,7 +97,7 @@ jobs:
     - name: Build (Windows)
       if: startsWith(matrix.os, 'windows')
       run: |
-        $files = Get-ChildItem *.bat -Exclude "win_e_sqlite3.bat","win_e_sqlite3mc.bat","win_e_sqlcipher.bat"
+        $files = Get-ChildItem *.bat -Exclude "win_e_sqlite3.bat","win_e_sqlite3mc.bat","win_e_sqlcipher.bat,"win_sqlite3mc.bat""
         foreach ($f in $files) {
           cmd /C $f
         }
@@ -244,6 +248,7 @@ jobs:
         rm -fr bin/e_sqlite3
         rm -fr bin/e_sqlite3mc
         rm -fr bin/e_sqlcipher
+        rm -fr bin/sqlite3mc
       working-directory: bld
     - uses: actions/download-artifact@v3
       with:
@@ -277,6 +282,8 @@ jobs:
         find ./bld/bin/e_sqlite3mc -name *.dylib | xargs chmod 0775
         find ./bld/bin/e_sqlcipher -name *.so | xargs chmod 0775
         find ./bld/bin/e_sqlcipher -name *.dylib | xargs chmod 0775
+        find ./bld/bin/sqlite3mc -name *.so | xargs chmod 0775
+        find ./bld/bin/sqlite3mc -name *.dylib | xargs chmod 0775
     - name: Commit & Push changes
       uses: actions-js/push@master
       with:
