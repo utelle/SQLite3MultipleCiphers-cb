@@ -97,7 +97,7 @@ jobs:
     - name: Build (Windows)
       if: startsWith(matrix.os, 'windows')
       run: |
-        $files = Get-ChildItem *.bat -Exclude "win_e_sqlite3.bat","win_e_sqlite3mc.bat","win_e_sqlcipher.bat,"win_sqlite3mc.bat"
+        $files = Get-ChildItem *.bat -Exclude "win_e_sqlite3.bat","win_e_sqlite3mc.bat","win_e_sqlcipher.bat","win_sqlite3mc.bat"
         foreach ($f in $files) {
           cmd /C $f
         }
