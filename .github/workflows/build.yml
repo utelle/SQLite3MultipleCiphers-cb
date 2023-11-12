@@ -20,11 +20,6 @@ jobs:
     - uses: actions/checkout@v3
       with:
         path: "cb"
-    - uses: actions/checkout@v3
-      with:
-        repository: libtom/libtomcrypt
-        path: "libtomcrypt"
-        ref: "v1.18.2"
     - name: Setup cross compilers
       if: startsWith(matrix.os, 'ubuntu')
       run: ./cb/bld/setup_linux.sh
@@ -69,22 +64,18 @@ jobs:
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         set -e
-        cd android_e_sqlite3
-        ndk-build
-        mkdir -p ../bin/e_sqlite3/android
-        cp -r libs/* ../bin/e_sqlite3/android
-        cd ../android_e_sqlite3mc
+        cd android_e_sqlite3mc
         ndk-build
         mkdir -p ../bin/e_sqlite3mc/android
         cp -r libs/* ../bin/e_sqlite3mc/android
-        cd ../android_e_sqlcipher
-        ndk-build
-        mkdir -p ../bin/e_sqlcipher/android
-        cp -r libs/* ../bin/e_sqlcipher/android
         cd ../android_sqlite3mc
         ndk-build
         mkdir -p ../bin/sqlite3mc/android
         cp -r libs/* ../bin/sqlite3mc/android
+#        cd ../android_e_sqlite3
+#        ndk-build
+#        mkdir -p ../bin/e_sqlite3/android
+#        cp -r libs/* ../bin/e_sqlite3/android
       working-directory: cb/bld
     - name: Build (macOS, iOS, tvOS)
       if: startsWith(matrix.os, 'macos')
@@ -97,7 +88,7 @@ jobs:
     - name: Build (Windows)
       if: startsWith(matrix.os, 'windows')
       run: |
-        $files = Get-ChildItem *.bat -Exclude "win_e_sqlite3.bat","win_e_sqlite3mc.bat","win_e_sqlcipher.bat","win_sqlite3mc.bat"
+        $files = Get-ChildItem *.bat -Exclude "win_e_sqlite3mc.bat","win_sqlite3mc.bat"
         foreach ($f in $files) {
           cmd /C $f
         }
@@ -120,11 +111,6 @@ jobs:
     - uses: actions/checkout@v3
       with:
         path: "cb"
-    - uses: actions/checkout@v3
-      with:
-        repository: libtom/libtomcrypt
-        path: "libtomcrypt"
-        ref: "v1.18.2"
     - name: Setup Emscripten
       uses: mymindstorm/setup-emsdk@v12
       with:
@@ -155,84 +141,84 @@ jobs:
         name: bin-wasm-${{ fromJSON(matrix.config).tfm }}
         path: cb/bld/bin
 
-  test:
-    needs: [ build, build-wasm]
-    if: ${{ github.event_name == 'pull_request' }}
-    strategy:
-      matrix:
-        # TODO want macos-latest here too, but the build currently fails there
-        os: [windows-2019]
-    runs-on: ${{ matrix.os }}
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        path: "cb"
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        repository: ericsink/SQLitePCL.raw
-        path: "SQLitePCL.raw"
-    - name: Clean output directory
-      if: startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')
-      run: rm -fr bin
-      working-directory: cb/bld
-    - name: Clean output directory
-      if: startsWith(matrix.os, 'windows')
-      run: rm bin -r -fo
-      working-directory: cb/bld
-    - uses: actions/download-artifact@v3
-      with:
-        name: bin-ubuntu-20.04
-        path: cb/bld/bin
-    - uses: actions/download-artifact@v3
-      with:
-        name: bin-macos-latest
-        path: cb/bld/bin
-    - uses: actions/download-artifact@v3
-      with:
-        name: bin-windows-2019
-        path: cb/bld/bin
-    - uses: actions/download-artifact@v3
-      with:
-        name: bin-wasm-net6.0
-        path: cb/bld/bin
-    - uses: actions/download-artifact@v3
-      with:
-        name: bin-wasm-net7.0
-        path: cb/bld/bin
-    - uses: actions/download-artifact@v3
-      with:
-        name: bin-wasm-net8.0
-        path: cb/bld/bin
-    # note that the following is mostly a copy of the build script from the SQLitePCL.raw repo
-    - name: "Set up Java: 11"
-      uses: actions/setup-java@v1
-      with:
-        java-version: 11
-    - name: Setup .NET 6
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 6.0.x
-    - name: Install workload ios
-      run: dotnet workload install ios
-    - name: Install workload android
-      run: dotnet workload install android
-    - name: Install workload tvos
-      run: dotnet workload install tvos
-    - name: Setup .NET 5
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 5.0.x
-    - name: Setup .NET 3.1
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 3.1.x
-    - name: Install T4
-      run: dotnet tool install --global dotnet-t4
-    - name: Build
-      run: |
-        cd SQLitePCL.raw/build
-        dotnet run
+#  test:
+#    needs: [ build, build-wasm]
+#    if: ${{ github.event_name == 'pull_request' }}
+#    strategy:
+#      matrix:
+#        # TODO want macos-latest here too, but the build currently fails there
+#        os: [windows-2019]
+#    runs-on: ${{ matrix.os }}
+#    steps:
+#    - uses: actions/checkout@v3
+#      with:
+#        path: "cb"
+#    - uses: actions/checkout@v3
+#      with:
+#        fetch-depth: 0
+#        repository: ericsink/SQLitePCL.raw
+#        path: "SQLitePCL.raw"
+#    - name: Clean output directory
+#      if: startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')
+#      run: rm -fr bin
+#      working-directory: cb/bld
+#    - name: Clean output directory
+#      if: startsWith(matrix.os, 'windows')
+#      run: rm bin -r -fo
+#      working-directory: cb/bld
+#    - uses: actions/download-artifact@v3
+#      with:
+#        name: bin-ubuntu-20.04
+#        path: cb/bld/bin
+#    - uses: actions/download-artifact@v3
+#      with:
+#        name: bin-macos-latest
+#        path: cb/bld/bin
+#    - uses: actions/download-artifact@v3
+#      with:
+#        name: bin-windows-2019
+#        path: cb/bld/bin
+#    - uses: actions/download-artifact@v3
+#      with:
+#        name: bin-wasm-net6.0
+#        path: cb/bld/bin
+#    - uses: actions/download-artifact@v3
+#      with:
+#        name: bin-wasm-net7.0
+#        path: cb/bld/bin
+#    - uses: actions/download-artifact@v3
+#      with:
+#        name: bin-wasm-net8.0
+#        path: cb/bld/bin
+#    # note that the following is mostly a copy of the build script from the SQLitePCL.raw repo
+#    - name: "Set up Java: 11"
+#      uses: actions/setup-java@v1
+#      with:
+#        java-version: 11
+#    - name: Setup .NET 6
+#      uses: actions/setup-dotnet@v3
+#      with:
+#        dotnet-version: 6.0.x
+#    - name: Install workload ios
+#      run: dotnet workload install ios
+#    - name: Install workload android
+#      run: dotnet workload install android
+#    - name: Install workload tvos
+#      run: dotnet workload install tvos
+#    - name: Setup .NET 5
+#      uses: actions/setup-dotnet@v3
+#      with:
+#        dotnet-version: 5.0.x
+#    - name: Setup .NET 3.1
+#      uses: actions/setup-dotnet@v3
+#      with:
+#        dotnet-version: 3.1.x
+#    - name: Install T4
+#      run: dotnet tool install --global dotnet-t4
+#    - name: Build
+#      run: |
+#        cd SQLitePCL.raw/build
+#        dotnet run
 
   publish:
     needs: [ build, build-wasm ]
@@ -244,9 +230,7 @@ jobs:
         fetch-depth: 0
     - name: Clean output directory
       run: |
-        rm -fr bin/e_sqlite3
         rm -fr bin/e_sqlite3mc
-        rm -fr bin/e_sqlcipher
         rm -fr bin/sqlite3mc
       working-directory: bld
     - uses: actions/download-artifact@v3
@@ -275,12 +259,10 @@ jobs:
         path: bld/bin
     - name: Fix permissions
       run: |
-        find ./bld/bin/e_sqlite3 -name *.so | xargs chmod 0775
-        find ./bld/bin/e_sqlite3 -name *.dylib | xargs chmod 0775
+#        find ./bld/bin/e_sqlite3 -name *.so | xargs chmod 0775
+#        find ./bld/bin/e_sqlite3 -name *.dylib | xargs chmod 0775
         find ./bld/bin/e_sqlite3mc -name *.so | xargs chmod 0775
         find ./bld/bin/e_sqlite3mc -name *.dylib | xargs chmod 0775
-        find ./bld/bin/e_sqlcipher -name *.so | xargs chmod 0775
-        find ./bld/bin/e_sqlcipher -name *.dylib | xargs chmod 0775
         find ./bld/bin/sqlite3mc -name *.so | xargs chmod 0775
         find ./bld/bin/sqlite3mc -name *.dylib | xargs chmod 0775
     - name: Commit & Push changes
