@@ -602,7 +602,8 @@ public static class cb
                         tw.Write(" -msse4.2");
                         tw.Write(" -maes");
                     }
-                    tw.Write(" -framework Security");
+// TODO: -framework Security required?
+//                    tw.Write(" -framework Security");
                     foreach (var d in defines.Keys.OrderBy(q => q))
                     {
                         var v = defines[d];
@@ -697,7 +698,8 @@ public static class cb
                         tw.Write(" -msse4.2");
                         tw.Write(" -maes");
                     }
-                    tw.Write(" -framework Security");
+// TODO: -framework Security required?
+//                    tw.Write(" -framework Security");
                     tw.Write(" -fembed-bitcode");
                     foreach (var d in defines.Keys.OrderBy(q => q))
                     {
