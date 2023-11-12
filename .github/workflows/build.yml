@@ -259,8 +259,6 @@ jobs:
         path: bld/bin
     - name: Fix permissions
       run: |
-#        find ./bld/bin/e_sqlite3 -name *.so | xargs chmod 0775
-#        find ./bld/bin/e_sqlite3 -name *.dylib | xargs chmod 0775
         find ./bld/bin/e_sqlite3mc -name *.so | xargs chmod 0775
         find ./bld/bin/e_sqlite3mc -name *.dylib | xargs chmod 0775
         find ./bld/bin/sqlite3mc -name *.so | xargs chmod 0775
