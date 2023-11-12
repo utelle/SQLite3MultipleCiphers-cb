@@ -455,8 +455,6 @@ public static class cb
                 tw.Write(" -dynamiclib");
                 tw.Write(" -O");
                 tw.Write(" -target x86_64-apple-ios-macabi");
-// TODO: suppress overriding warning
-//                tw.Write(" -mmacosx-version-min=10.14");
                 tw.Write(" -arch {0}", arch);
                 if (arch == "x86_64" )
                 {
@@ -604,8 +602,6 @@ public static class cb
                         tw.Write(" -msse4.2");
                         tw.Write(" -maes");
                     }
-// TODO: -framework Security required?
-//                    tw.Write(" -framework Security");
                     foreach (var d in defines.Keys.OrderBy(q => q))
                     {
                         var v = defines[d];
@@ -700,8 +696,6 @@ public static class cb
                         tw.Write(" -msse4.2");
                         tw.Write(" -maes");
                     }
-// TODO: -framework Security required?
-//                    tw.Write(" -framework Security");
                     tw.Write(" -fembed-bitcode");
                     tw.Write(" -DHAVE_GETHOSTUUID=0");
                     foreach (var d in defines.Keys.OrderBy(q => q))
@@ -782,8 +776,6 @@ public static class cb
                     tw.Write(" -msse4.2");
                     tw.Write(" -maes");
                 }
-// TODO: -framework Security  required?
-//                tw.Write(" -framework Security");
                 tw.Write(" -DHAVE_GETHOSTUUID=0");
                 foreach (var d in defines.Keys.OrderBy(q => q))
                 {
