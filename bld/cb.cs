@@ -464,6 +464,7 @@ public static class cb
                     tw.Write(" -maes");
                 }
                 tw.Write(" -framework Security");
+                tw.Write(" -DHAVE_GETHOSTUUID=0");
                 foreach (var d in defines.Keys.OrderBy(q => q))
                 {
                     var v = defines[d];
@@ -702,6 +703,7 @@ public static class cb
 // TODO: -framework Security required?
 //                    tw.Write(" -framework Security");
                     tw.Write(" -fembed-bitcode");
+                    tw.Write(" -DHAVE_GETHOSTUUID=0");
                     foreach (var d in defines.Keys.OrderBy(q => q))
                     {
                         var v = defines[d];
@@ -782,6 +784,7 @@ public static class cb
                 }
 // TODO: -framework Security  required?
 //                tw.Write(" -framework Security");
+                tw.Write(" -DHAVE_GETHOSTUUID=0");
                 foreach (var d in defines.Keys.OrderBy(q => q))
                 {
                     var v = defines[d];
