@@ -49,6 +49,14 @@ typedef unsigned short int u16;
 # include SHELL_STRINGIFY(SQLITE_CUSTOM_INCLUDE)
 #endif
 
+#if SQLITE3MC_USE_MINIZ != 0 && !defined(SQLITE_ENABLE_COMPRESS)
+#include "miniz.c"
+#ifdef SQLITE_HAVE_ZLIB
+#undef SQLITE_HAVE_ZLIB
+#endif
+#define SQLITE_HAVE_ZLIB 1
+#endif
+
 /*
 ** Determine if we are dealing with WinRT, which provides only a subset of
 ** the full Win32 API.
@@ -9328,7 +9336,7 @@ SQLITE_EXTENSION_INIT1
 #include <assert.h>
 #include <stdint.h>
 
-#include <zlib.h>
+#include "zlibwrap.h"
 
 #ifndef SQLITE_OMIT_VIRTUALTABLE
 
@@ -11552,7 +11560,7 @@ int sqlite3_zipfile_init(
 */
 /* #include "sqlite3ext.h" */
 SQLITE_EXTENSION_INIT1
-#include <zlib.h>
+#include "zlibwrap.h"
 #include <assert.h>
 
 /*
@@ -28032,6 +28040,8 @@ static int do_meta_command(char *zLine, ShellState *p){
     char *zPtrSz = sizeof(void*)==8 ? "64-bit" : "32-bit";
     oputf("SQLite %s %s\n" /*extra-version-info*/,
           sqlite3_libversion(), sqlite3_sourceid());
+    extern char* sqlite3mc_version();
+    oputf("%s\n", sqlite3mc_version());
 #if SQLITE_HAVE_ZLIB
     oputf("zlib version %s\n", zlibVersion());
 #endif
@@ -29435,9 +29445,11 @@ int SQLITE_CDECL wmain(int argc, wchar_t **wargv){
 #else
 # define SHELL_CIO_CHAR_SET ""
 #endif
-      sputf(stdout, "SQLite version %s %.19s%s\n" /*extra-version-info*/
-            "Enter \".help\" for usage hints.\n",
-            sqlite3_libversion(), sqlite3_sourceid(), SHELL_CIO_CHAR_SET);
+      extern char* sqlite3mc_version();
+      sputf(stdout, "SQLite version %s %.19s%s" /*extra-version-info*/
+        " (%s)\n" /*SQLite3-Multiple-Ciphers-version-info*/
+        "Enter \".help\" for usage hints.\n",
+        sqlite3_libversion(), sqlite3_sourceid(), SHELL_CIO_CHAR_SET, sqlite3mc_version());
       if( warnInmemoryDb ){
         sputz(stdout, "Connected to a ");
         printBold("transient in-memory database");
