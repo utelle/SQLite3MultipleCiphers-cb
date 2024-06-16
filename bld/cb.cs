@@ -459,6 +459,7 @@ public static class cb
                 tw.Write(" -dynamiclib");
                 tw.Write(" -O");
                 tw.Write(" -target x86_64-apple-ios-macabi");
+                tw.Write(" -mmacosx-version-min=10.14");
                 tw.Write(" -arch {0}", arch);
                 if (arch == "x86_64" )
                 {
