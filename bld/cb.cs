@@ -176,6 +176,10 @@ public static class CB
                     compiler = "arm-linux-gnueabi-gcc";
                     break;
 
+                case "riscv64":
+                    compiler = "riscv64-linux-gnu-gcc";
+                    break;
+
                 case "musl-x64":
                     compiler = "musl-gcc";
                     tw.Write(" -m64\n");
@@ -193,6 +197,10 @@ public static class CB
 
                 case "musl-s390x":
                     compiler = "s390x-linux-musl-cc";
+                    break;
+
+                case "musl-riscv64":
+                    compiler = "riscv64-linux-musl-cc";
                     break;
 
                 default:
@@ -272,6 +280,7 @@ public static class CB
             tw.Write("LOCAL_CFLAGS := -O {0}\n", string.Join(" ", defs));
             tw.Write("ifeq ($(TARGET_ARCH_ABI),x86)\nLOCAL_CFLAGS += -maes -msse4.2\nendif\n");
             tw.Write("ifeq ($(TARGET_ARCH_ABI),x86_64)\nLOCAL_CFLAGS += -maes -msse4.2\nendif\n");
+            tw.Write("LOCAL_LDFLAGS += \"-Wl,-z,max-page-size=16384\"\n");
             tw.Write("LOCAL_LDLIBS := -llog\n");
             if (includes.Count > 0)
             {
@@ -1338,12 +1347,14 @@ public static class CB
                 new linux_target("musl-arm64"),
                 new linux_target("musl-armhf"),
                 new linux_target("musl-s390x"),
+                new linux_target("musl-riscv64"),
                 new linux_target("arm64"),
                 new linux_target("armhf"),
                 new linux_target("armsf"),
                 new linux_target("mips64"),
                 new linux_target("s390x"),
                 new linux_target("ppc64le"),
+                new linux_target("riscv64"),
             };
 
             write_linux_multi(
@@ -1571,12 +1582,14 @@ public static class CB
                 new linux_target("musl-arm64"),
                 new linux_target("musl-armhf"),
                 new linux_target("musl-s390x"),
+                new linux_target("musl-riscv64"),
                 new linux_target("arm64"),
                 new linux_target("armhf"),
                 new linux_target("armsf"),
                 new linux_target("mips64"),
                 new linux_target("s390x"),
                 new linux_target("ppc64le"),
+                new linux_target("riscv64"),
             };
 
             write_linux_multi(
@@ -1843,12 +1856,14 @@ public static class CB
                 new linux_target("musl-arm64"),
                 new linux_target("musl-armhf"),
                 new linux_target("musl-s390x"),
+                new linux_target("musl-riscv64"),
                 new linux_target("arm64"),
                 new linux_target("armhf"),
                 new linux_target("armsf"),
                 new linux_target("mips64"),
                 new linux_target("s390x"),
                 new linux_target("ppc64le"),
+                new linux_target("riscv64"),
             };
 
             write_linux_multi(
