@@ -20,6 +20,11 @@ jobs:
     - uses: actions/checkout@v4
       with:
         path: "cb"
+    - uses: actions/checkout@v4
+      with:
+        repository: utelle/musl-cc-binaries
+        ref: main
+        path: "musl-cc"
     - name: Setup cross compilers
       if: startsWith(matrix.os, 'ubuntu')
       run: ./cb/bld/setup_linux.sh

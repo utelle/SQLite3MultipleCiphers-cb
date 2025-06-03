@@ -14,16 +14,15 @@ sudo apt-get install gcc-s390x-linux-gnu
 sudo apt-get install gcc-powerpc64le-linux-gnu
 sudo apt-get install gcc-riscv64-linux-gnu
 
+pwd
 mkdir crosscompilers
 cd crosscompilers
-wget https://musl.cc/arm-linux-musleabihf-cross.tgz
-#wget https://ericsink.com/arm-linux-musleabihf-cross.tgz
-tar --strip-components=1 -zxf ./arm-linux-musleabihf-cross.tgz
-wget https://musl.cc/aarch64-linux-musl-cross.tgz
-#wget https://ericsink.com/aarch64-linux-musl-cross.tgz
-tar --strip-components=1 -zxf aarch64-linux-musl-cross.tgz
-wget https://musl.cc/s390x-linux-musl-cross.tgz
-tar --strip-components=1 -zxf s390x-linux-musl-cross.tgz
-wget https://musl.cc/riscv64-linux-musl-cross.tgz
-tar --strip-components=1 -zxf riscv64-linux-musl-cross.tgz
+#wget https://musl.cc/arm-linux-musleabihf-cross.tgz
+tar --strip-components=1 -zxf ../musl-cc/arm-linux-musleabihf-cross.tgz
+#wget https://musl.cc/aarch64-linux-musl-cross.tgz
+tar --strip-components=1 -zxf ../musl-cc/aarch64-linux-musl-cross.tgz
+#wget https://musl.cc/s390x-linux-musl-cross.tgz
+tar --strip-components=1 -zxf ../musl-cc/s390x-linux-musl-cross.tgz
+#wget https://musl.cc/riscv64-linux-musl-cross.tgz
+tar --strip-components=1 -zxf ../musl-cc/riscv64-linux-musl-cross.tgz
 cd ..
