@@ -24,6 +24,7 @@ jobs:
       with:
         repository: utelle/musl-cc-binaries
         ref: main
+        lfs: 'true'
         path: "musl-cc"
     - name: Setup cross compilers
       if: startsWith(matrix.os, 'ubuntu')
