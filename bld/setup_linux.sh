@@ -14,7 +14,12 @@ sudo apt-get install gcc-s390x-linux-gnu
 sudo apt-get install gcc-powerpc64le-linux-gnu
 sudo apt-get install gcc-riscv64-linux-gnu
 
+echo "Current working directory"
 pwd
+echo "Show musl.cc binaries"
+ls -l 
+ls -l ./musl-cc
+
 mkdir crosscompilers
 cd crosscompilers
 #wget https://musl.cc/arm-linux-musleabihf-cross.tgz
