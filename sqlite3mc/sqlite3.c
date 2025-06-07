@@ -120,7 +120,7 @@ SQLITE_API LPWSTR sqlite3_win32_utf8_to_unicode(const char*);
 /*** Begin of #include "sqlite3patched.c" ***/
 /******************************************************************************
 ** This file is an amalgamation of many separate C source files from SQLite
-** version 3.50.0.  By combining all the individual C code files into this
+** version 3.50.1.  By combining all the individual C code files into this
 ** single large file, the entire code can be compiled as a single translation
 ** unit.  This allows many compilers to do optimizations that would not be
 ** possible if the files were compiled separately.  Performance improvements
@@ -138,7 +138,7 @@ SQLITE_API LPWSTR sqlite3_win32_utf8_to_unicode(const char*);
 ** separate file. This file contains only code for the core SQLite library.
 **
 ** The content in this amalgamation comes from Fossil check-in
-** dfc790f998f450d9c35e3ba1c8c89c17466c with changes in files:
+** b77dc5e0f596d2140d9ac682b2893ff65d3a with changes in files:
 **
 **
 */
@@ -585,9 +585,9 @@ extern "C" {
 ** [sqlite3_libversion_number()], [sqlite3_sourceid()],
 ** [sqlite_version()] and [sqlite_source_id()].
 */
-#define SQLITE_VERSION        "3.50.0"
-#define SQLITE_VERSION_NUMBER 3050000
-#define SQLITE_SOURCE_ID      "2025-05-29 14:26:00 dfc790f998f450d9c35e3ba1c8c89c17466cb559f87b0239e4aab9d34e28f742"
+#define SQLITE_VERSION        "3.50.1"
+#define SQLITE_VERSION_NUMBER 3050001
+#define SQLITE_SOURCE_ID      "2025-06-06 14:52:32 b77dc5e0f596d2140d9ac682b2893ff65d3a4140aa86067a3efebe29dc914c95"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -18837,6 +18837,7 @@ struct CollSeq {
 #define SQLITE_AFF_INTEGER  0x44  /* 'D' */
 #define SQLITE_AFF_REAL     0x45  /* 'E' */
 #define SQLITE_AFF_FLEXNUM  0x46  /* 'F' */
+#define SQLITE_AFF_DEFER    0x58  /* 'X'  - defer computation until later */
 
 #define sqlite3IsNumericAffinity(X)  ((X)>=SQLITE_AFF_NUMERIC)
 
@@ -44018,21 +44019,20 @@ static int unixShmLock(
   /* Check that, if this to be a blocking lock, no locks that occur later
   ** in the following list than the lock being obtained are already held:
   **
-  **   1. Checkpointer lock (ofst==1).
-  **   2. Write lock (ofst==0).
-  **   3. Read locks (ofst>=3 && ofst<SQLITE_SHM_NLOCK).
+  **   1. Recovery lock (ofst==2).
+  **   2. Checkpointer lock (ofst==1).
+  **   3. Write lock (ofst==0).
+  **   4. Read locks (ofst>=3 && ofst<SQLITE_SHM_NLOCK).
   **
   ** In other words, if this is a blocking lock, none of the locks that
   ** occur later in the above list than the lock being obtained may be
   ** held.
-  **
-  ** It is not permitted to block on the RECOVER lock.
   */
 #if defined(SQLITE_ENABLE_SETLK_TIMEOUT) && defined(SQLITE_DEBUG)
   {
     u16 lockMask = (p->exclMask|p->sharedMask);
     assert( (flags & SQLITE_SHM_UNLOCK) || pDbFd->iBusyTimeout==0 || (
-          (ofst!=2)                                   /* not RECOVER */
+          (ofst!=2 || lockMask==0)
        && (ofst!=1 || lockMask==0 || lockMask==2)
        && (ofst!=0 || lockMask<3)
        && (ofst<3  || lockMask<(1<<ofst))
@@ -49993,7 +49993,11 @@ static int winHandleLockTimeout(
       if( res==WAIT_OBJECT_0 ){
         ret = TRUE;
       }else if( res==WAIT_TIMEOUT ){
+#if SQLITE_ENABLE_SETLK_TIMEOUT==1
         rc = SQLITE_BUSY_TIMEOUT;
+#else
+        rc = SQLITE_BUSY;
+#endif
       }else{
         /* Some other error has occurred */
         rc = SQLITE_IOERR_LOCK;
@@ -51804,21 +51808,20 @@ static int winShmLock(
   /* Check that, if this to be a blocking lock, no locks that occur later
   ** in the following list than the lock being obtained are already held:
   **
-  **   1. Checkpointer lock (ofst==1).
-  **   2. Write lock (ofst==0).
-  **   3. Read locks (ofst>=3 && ofst<SQLITE_SHM_NLOCK).
+  **   1. Recovery lock (ofst==2).
+  **   2. Checkpointer lock (ofst==1).
+  **   3. Write lock (ofst==0).
+  **   4. Read locks (ofst>=3 && ofst<SQLITE_SHM_NLOCK).
   **
   ** In other words, if this is a blocking lock, none of the locks that
   ** occur later in the above list than the lock being obtained may be
   ** held.
-  **
-  ** It is not permitted to block on the RECOVER lock.
   */
 #if defined(SQLITE_ENABLE_SETLK_TIMEOUT) && defined(SQLITE_DEBUG)
   {
     u16 lockMask = (p->exclMask|p->sharedMask);
     assert( (flags & SQLITE_SHM_UNLOCK) || pDbFd->iBusyTimeout==0 || (
-          (ofst!=2)                                   /* not RECOVER */
+          (ofst!=2 || lockMask==0)
        && (ofst!=1 || lockMask==0 || lockMask==2)
        && (ofst!=0 || lockMask<3)
        && (ofst<3  || lockMask<(1<<ofst))
@@ -58894,6 +58897,9 @@ struct Pager {
   Wal *pWal;                  /* Write-ahead log used by "journal_mode=wal" */
   char *zWal;                 /* File name for write-ahead log */
 #endif
+#ifdef SQLITE_ENABLE_SETLK_TIMEOUT
+  sqlite3 *dbWal;
+#endif
 };
 
 /*
@@ -65776,6 +65782,11 @@ static int pagerOpenWal(Pager *pPager){
         pPager->fd, pPager->zWal, pPager->exclusiveMode,
         pPager->journalSizeLimit, &pPager->pWal
     );
+#ifdef SQLITE_ENABLE_SETLK_TIMEOUT
+    if( rc==SQLITE_OK ){
+      sqlite3WalDb(pPager->pWal, pPager->dbWal);
+    }
+#endif
   }
   pagerFixMaplimit(pPager);
 
@@ -65895,6 +65906,7 @@ SQLITE_PRIVATE int sqlite3PagerWalWriteLock(Pager *pPager, int bLock){
 ** blocking locks are required.
 */
 SQLITE_PRIVATE void sqlite3PagerWalDb(Pager *pPager, sqlite3 *db){
+  pPager->dbWal = db;
   if( pagerUseWal(pPager) ){
     sqlite3WalDb(pPager->pWal, db);
   }
@@ -69068,7 +69080,6 @@ static int walTryBeginRead(Wal *pWal, int *pChanged, int useWal, int *pCnt){
       rc = walIndexReadHdr(pWal, pChanged);
     }
 #ifdef SQLITE_ENABLE_SETLK_TIMEOUT
-    walDisableBlocking(pWal);
     if( rc==SQLITE_BUSY_TIMEOUT ){
       rc = SQLITE_BUSY;
       *pCnt |= WAL_RETRY_BLOCKED_MASK;
@@ -69083,6 +69094,7 @@ static int walTryBeginRead(Wal *pWal, int *pChanged, int useWal, int *pCnt){
       ** WAL_RETRY this routine will be called again and will probably be
       ** right on the second iteration.
       */
+      (void)walEnableBlocking(pWal);
       if( pWal->apWiData[0]==0 ){
         /* This branch is taken when the xShmMap() method returns SQLITE_BUSY.
         ** We assume this is a transient condition, so return WAL_RETRY. The
@@ -69099,6 +69111,7 @@ static int walTryBeginRead(Wal *pWal, int *pChanged, int useWal, int *pCnt){
         rc = SQLITE_BUSY_RECOVERY;
       }
     }
+    walDisableBlocking(pWal);
     if( rc!=SQLITE_OK ){
       return rc;
     }
@@ -75373,6 +75386,13 @@ static SQLITE_NOINLINE int btreeBeginTrans(
       (void)sqlite3PagerWalWriteLock(pPager, 0);
       unlockBtreeIfUnused(pBt);
     }
+#if defined(SQLITE_ENABLE_SETLK_TIMEOUT)
+    if( rc==SQLITE_BUSY_TIMEOUT ){
+      /* If a blocking lock timed out, break out of the loop here so that
+      ** the busy-handler is not invoked.  */
+      break;
+    }
+#endif
   }while( (rc&0xFF)==SQLITE_BUSY && pBt->inTransaction==TRANS_NONE &&
           btreeInvokeBusyHandler(pBt) );
   sqlite3PagerWalDb(pPager, 0);
@@ -105190,7 +105210,7 @@ SQLITE_PRIVATE int sqlite3VdbeSorterInit(
   assert( pCsr->eCurType==CURTYPE_SORTER );
   assert( sizeof(KeyInfo) + UMXV(pCsr->pKeyInfo->nKeyField)*sizeof(CollSeq*)
                < 0x7fffffff );
-  szKeyInfo = SZ_KEYINFO(pCsr->pKeyInfo->nKeyField+1);
+  szKeyInfo = SZ_KEYINFO(pCsr->pKeyInfo->nKeyField);
   sz = SZ_VDBESORTER(nWorker+1);
 
   pSorter = (VdbeSorter*)sqlite3DbMallocZero(db, sz + szKeyInfo);
@@ -110540,7 +110560,9 @@ SQLITE_PRIVATE char sqlite3ExprAffinity(const Expr *pExpr){
           pExpr->pLeft->x.pSelect->pEList->a[pExpr->iColumn].pExpr
       );
     }
-    if( op==TK_VECTOR ){
+    if( op==TK_VECTOR
+     || (op==TK_FUNCTION && pExpr->affExpr==SQLITE_AFF_DEFER)
+    ){
       assert( ExprUseXList(pExpr) );
       return sqlite3ExprAffinity(pExpr->x.pList->a[0].pExpr);
     }
@@ -110733,7 +110755,9 @@ SQLITE_PRIVATE CollSeq *sqlite3ExprCollSeq(Parse *pParse, const Expr *pExpr){
       p = p->pLeft;
       continue;
     }
-    if( op==TK_VECTOR ){
+    if( op==TK_VECTOR
+     || (op==TK_FUNCTION && p->affExpr==SQLITE_AFF_DEFER)
+    ){
       assert( ExprUseXList(p) );
       p = p->x.pList->a[0].pExpr;
       continue;
@@ -145520,7 +145544,7 @@ static int sqlite3ProcessJoin(Parse *pParse, Select *p){
         }
         pE1 = sqlite3CreateColumnExpr(db, pSrc, iLeft, iLeftCol);
         sqlite3SrcItemColumnUsed(&pSrc->a[iLeft], iLeftCol);
-        if( (pSrc->a[0].fg.jointype & JT_LTORJ)!=0 ){
+        if( (pSrc->a[0].fg.jointype & JT_LTORJ)!=0 && pParse->nErr==0 ){
           /* This branch runs if the query contains one or more RIGHT or FULL
           ** JOINs.  If only a single table on the left side of this join
           ** contains the zName column, then this branch is a no-op.
@@ -145536,6 +145560,8 @@ static int sqlite3ProcessJoin(Parse *pParse, Select *p){
           */
           ExprList *pFuncArgs = 0;   /* Arguments to the coalesce() */
           static const Token tkCoalesce = { "coalesce", 8 };
+          assert( pE1!=0 );
+          ExprSetProperty(pE1, EP_CanBeNull);
           while( tableAndColumnIndex(pSrc, iLeft+1, i, zName, &iLeft, &iLeftCol,
                                      pRight->fg.isSynthUsing)!=0 ){
             if( pSrc->a[iLeft].fg.isUsing==0
@@ -145552,7 +145578,13 @@ static int sqlite3ProcessJoin(Parse *pParse, Select *p){
           if( pFuncArgs ){
             pFuncArgs = sqlite3ExprListAppend(pParse, pFuncArgs, pE1);
             pE1 = sqlite3ExprFunction(pParse, pFuncArgs, &tkCoalesce, 0);
+            if( pE1 ){
+              pE1->affExpr = SQLITE_AFF_DEFER;
+            }
           }
+        }else if( (pSrc->a[i+1].fg.jointype & JT_LEFT)!=0 && pParse->nErr==0 ){
+          assert( pE1!=0 );
+          ExprSetProperty(pE1, EP_CanBeNull);
         }
         pE2 = sqlite3CreateColumnExpr(db, pSrc, i+1, iRightCol);
         sqlite3SrcItemColumnUsed(pRight, iRightCol);
@@ -149160,9 +149192,9 @@ static int compoundHasDifferentAffinities(Select *p){
 **             from 2015-02-09.)
 **
 **   (3)  If the subquery is the right operand of a LEFT JOIN then
-**        (3a) the subquery may not be a join and
-**        (3b) the FROM clause of the subquery may not contain a virtual
-**             table and
+**        (3a) the subquery may not be a join
+**        (**) Was (3b): "the FROM clause of the subquery may not contain
+**             a virtual table"
 **        (**) Was: "The outer query may not have a GROUP BY." This case
 **             is now managed correctly
 **        (3d) the outer query may not be DISTINCT.
@@ -149378,7 +149410,7 @@ static int flattenSubquery(
   */
   if( (pSubitem->fg.jointype & (JT_OUTER|JT_LTORJ))!=0 ){
     if( pSubSrc->nSrc>1                        /* (3a) */
-     || IsVirtual(pSubSrc->a[0].pSTab)         /* (3b) */
+     /**** || IsVirtual(pSubSrc->a[0].pSTab)      (3b)-omitted */
      || (p->selFlags & SF_Distinct)!=0         /* (3d) */
      || (pSubitem->fg.jointype & JT_RIGHT)!=0  /* (26) */
     ){
@@ -161887,12 +161919,13 @@ SQLITE_PRIVATE Bitmask sqlite3WhereCodeOneLoopStart(
     if( pLevel->iLeftJoin==0 ){
       /* If a partial index is driving the loop, try to eliminate WHERE clause
       ** terms from the query that must be true due to the WHERE clause of
-      ** the partial index.
+      ** the partial index.  This optimization does not work on an outer join,
+      ** as shown by:
       **
-      ** 2019-11-02 ticket 623eff57e76d45f6: This optimization does not work
-      ** for a LEFT JOIN.
+      ** 2019-11-02 ticket 623eff57e76d45f6      (LEFT JOIN)
+      ** 2025-05-29 forum post 7dee41d32506c4ae  (RIGHT JOIN)
       */
-      if( pIdx->pPartIdxWhere ){
+      if( pIdx->pPartIdxWhere && pLevel->pRJ==0 ){
         whereApplyPartialIndexConstraints(pIdx->pPartIdxWhere, iCur, pWC);
       }
     }else{
@@ -209199,8 +209232,10 @@ static int jsonBlobChangePayloadSize(
     nExtra = 1;
   }else if( szType==13 ){
     nExtra = 2;
-  }else{
+  }else if( szType==14 ){
     nExtra = 4;
+  }else{
+    nExtra = 8;
   }
   if( szPayload<=11 ){
     nNeeded = 0;
@@ -213584,6 +213619,8 @@ SQLITE_PRIVATE int sqlite3JsonTableFunctions(sqlite3 *db){
 /*   #include "sqlite3.h" */
 #endif
 SQLITE_PRIVATE int sqlite3GetToken(const unsigned char*,int*); /* In the SQLite core */
+
+/* #include <stddef.h> */
 
 /*
 ** If building separately, we will need some setup that is normally
@@ -235627,6 +235664,7 @@ SQLITE_EXTENSION_INIT1
 
 /* #include <string.h> */
 /* #include <assert.h> */
+/* #include <stddef.h> */
 
 #ifndef SQLITE_AMALGAMATION
 
@@ -257370,7 +257408,7 @@ static void fts5SourceIdFunc(
 ){
   assert( nArg==0 );
   UNUSED_PARAM2(nArg, apUnused);
-  sqlite3_result_text(pCtx, "fts5: 2025-05-29 14:26:00 dfc790f998f450d9c35e3ba1c8c89c17466cb559f87b0239e4aab9d34e28f742", -1, SQLITE_TRANSIENT);
+  sqlite3_result_text(pCtx, "fts5: 2025-06-06 14:52:32 b77dc5e0f596d2140d9ac682b2893ff65d3a4140aa86067a3efebe29dc914c95", -1, SQLITE_TRANSIENT);
 }
 
 /*
@@ -263196,9 +263234,9 @@ SQLITE_API const char *sqlite3_sourceid(void){ return SQLITE_SOURCE_ID; }
 
 #define SQLITE3MC_VERSION_MAJOR      2
 #define SQLITE3MC_VERSION_MINOR      1
-#define SQLITE3MC_VERSION_RELEASE    2
+#define SQLITE3MC_VERSION_RELEASE    3
 #define SQLITE3MC_VERSION_SUBRELEASE 0
-#define SQLITE3MC_VERSION_STRING     "SQLite3 Multiple Ciphers 2.1.2"
+#define SQLITE3MC_VERSION_STRING     "SQLite3 Multiple Ciphers 2.1.3"
 
 #endif /* SQLITE3MC_VERSION_H_ */
 /*** End of #include "sqlite3mc_version.h" ***/
@@ -263357,9 +263395,9 @@ extern "C" {
 ** [sqlite3_libversion_number()], [sqlite3_sourceid()],
 ** [sqlite_version()] and [sqlite_source_id()].
 */
-#define SQLITE_VERSION        "3.50.0"
-#define SQLITE_VERSION_NUMBER 3050000
-#define SQLITE_SOURCE_ID      "2025-05-29 14:26:00 dfc790f998f450d9c35e3ba1c8c89c17466cb559f87b0239e4aab9d34e28f742"
+#define SQLITE_VERSION        "3.50.1"
+#define SQLITE_VERSION_NUMBER 3050001
+#define SQLITE_SOURCE_ID      "2025-06-06 14:52:32 b77dc5e0f596d2140d9ac682b2893ff65d3a4140aa86067a3efebe29dc914c95"
 
 /*
 ** CAPI3REF: Run-Time Library Version Numbers
@@ -279189,9 +279227,6 @@ void sqlcipher_hmac(int algorithm,
 
 #include <assert.h>
 #include <string.h>
-#if defined(__GNUC__) && !defined(__MINGW32__) && !defined(__clang__) && !defined(__QNX__)
-#include <endian.h>
-#endif
 
 /* #include "sha1.h" */
 
@@ -279212,23 +279247,41 @@ void sqlcipher_hmac(int algorithm,
 
 static inline void write32_be(uint32_t n, uint8_t out[4])
 {
-#if defined(__GNUC__) && __GNUC__ >= 4 && __BYTE_ORDER == __LITTLE_ENDIAN
-  *(uint32_t *)(out) = __builtin_bswap32(n);
+#if SQLITE_BYTEORDER==4321
+  memcpy(out, &n, 4);
+#elif SQLITE_BYTEORDER==1234 && GCC_VERSION>=4003000
+  u32 x = __builtin_bswap32(n);
+  memcpy(out, &x, 4);
+#elif SQLITE_BYTEORDER==1234 && MSVC_VERSION>=1300
+  u32 x = _byteswap_ulong(n);
+  memcpy(out, &x, 4);
 #else
-  out[0] = (n >> 24) & 0xff;
-  out[1] = (n >> 16) & 0xff;
-  out[2] = (n >> 8) & 0xff;
-  out[3] = n & 0xff;
+  out[0] = (n >> 24) & 0xFF;
+  out[1] = (n >> 16) & 0xFF;
+  out[2] = (n >> 8) & 0xFF;
+  out[3] = (n >> 0) & 0xFF;
 #endif
 }
 
 static inline void write64_be(uint64_t n, uint8_t out[8])
 {
-#if defined(__GNUC__) &&  __GNUC__ >= 4 && __BYTE_ORDER == __LITTLE_ENDIAN
-  *(uint64_t *)(out) = __builtin_bswap64(n);
+#if SQLITE_BYTEORDER==1234 && GCC_VERSION>=4003000
+  n = __builtin_bswap64(n);
+  memcpy(out, &n, 8);
+#elif SQLITE_BYTEORDER==1234 && MSVC_VERSION>=1300
+  n = _byteswap_uint64(n);
+  memcpy(out, &n, 8);
+#elif SQLITE_BYTEORDER==4321
+  memcpy(out, &n, 8);
 #else
-  write32_be((n >> 32) & 0xffffffff, out);
-  write32_be(n & 0xffffffff, out + 4);
+  out[0] = (n >> 56) & 0xFF;
+  out[1] = (n >> 48) & 0xFF;
+  out[2] = (n >> 40) & 0xFF;
+  out[3] = (n >> 32) & 0xFF;
+  out[4] = (n >> 24) & 0xFF;
+  out[5] = (n >> 16) & 0xFF;
+  out[6] = (n >> 8) & 0xFF;
+  out[7] = (n >> 0) & 0xFF;
 #endif
 }
 
@@ -280039,12 +280092,15 @@ fail:
 }
 
 #if defined(__APPLE__)
+#include <AvailabilityMacros.h>
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #include <Security/SecRandom.h>
+#endif
 #endif
 
 static size_t entropy(void* buf, size_t n)
 {
-#if defined(__APPLE__)
+#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
   if (SecRandomCopyBytes(kSecRandomDefault, n, (uint8_t*) buf) == 0)
     return n;
 #elif defined(__linux__) && defined(SYS_getrandom)
@@ -330979,7 +331035,7 @@ sqlite3mcBtreeSetPageSize(Btree* p, int pageSize, int nReserve, int iFix)
 ** Change 4: Call sqlite3mcBtreeSetPageSize instead of sqlite3BtreeSetPageSize for main database
 **           (sqlite3mcBtreeSetPageSize allows to reduce the number of reserved bytes)
 **
-** This code is generated by the script rekeyvacuum.sh from SQLite version 3.50.0 amalgamation.
+** This code is generated by the script rekeyvacuum.sh from SQLite version 3.50.1 amalgamation.
 */
 SQLITE_PRIVATE SQLITE_NOINLINE int sqlite3mcRunVacuumForRekey(
   char **pzErrMsg,        /* Write error message here */
