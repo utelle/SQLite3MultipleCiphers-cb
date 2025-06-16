@@ -475,7 +475,7 @@ public static class CB
                     tw.Write(" -msse4.2");
                     tw.Write(" -maes");
                 }
-                tw.Write(" -framework Security");
+                //tw.Write(" -framework Security");
                 tw.Write(" -DHAVE_GETHOSTUUID=0");
                 foreach (var d in defines.Keys.OrderBy(q => q))
                 {
@@ -538,7 +538,7 @@ public static class CB
                     tw.Write(" -msse4.2");
                     tw.Write(" -maes");
                 }
-                tw.Write(" -framework Security");
+                //tw.Write(" -framework Security");
                 foreach (var d in defines.Keys.OrderBy(q => q))
                 {
                     var v = defines[d];
@@ -735,10 +735,12 @@ public static class CB
             tw.Write($"libtool -static -o {path_static} -filelist {dest_filelist}\n");
 
             tw.Write("mkdir -p \"./bin/{0}/tvos/device\"\n", libname);
-            tw.Write($"xcrun --sdk appletvos clang {string.Join(" ", arches_device.Select(s => $"-arch {s}"))} -framework Security -shared -all_load -o ./bin/{libname}/tvos/device/lib{libname}.dylib {path_static}\n");
+            tw.Write($"xcrun --sdk appletvos clang {string.Join(" ", arches_device.Select(s => $"-arch {s}"))} -shared -all_load -o ./bin/{libname}/tvos/device/lib{libname}.dylib {path_static}\n");
+            //tw.Write($"xcrun --sdk appletvos clang {string.Join(" ", arches_device.Select(s => $"-arch {s}"))} -framework Security -shared -all_load -o ./bin/{libname}/tvos/device/lib{libname}.dylib {path_static}\n");
 
             tw.Write("mkdir -p \"./bin/{0}/tvos/simulator\"\n", libname);
-            tw.Write($"xcrun --sdk appletvsimulator clang {string.Join(" ", arches_simulator.Select(s => $"-arch {s}"))} -framework Security -shared -all_load -o ./bin/{libname}/tvos/simulator/lib{libname}.dylib {path_static}\n");
+            tw.Write($"xcrun --sdk appletvsimulator clang {string.Join(" ", arches_simulator.Select(s => $"-arch {s}"))} -shared -all_load -o ./bin/{libname}/tvos/simulator/lib{libname}.dylib {path_static}\n");
+            //tw.Write($"xcrun --sdk appletvsimulator clang {string.Join(" ", arches_simulator.Select(s => $"-arch {s}"))} -framework Security -shared -all_load -o ./bin/{libname}/tvos/simulator/lib{libname}.dylib {path_static}\n");
         }
     }
 
@@ -814,7 +816,8 @@ public static class CB
 
         tw.Write($"mkdir -p \"./bin/{libname}/ios/{subfolder_name}\"\n");
         tw.Write($"libtool -static -o {path_static} -filelist {dest_filelist}\n");
-        tw.Write($"xcrun --sdk {(simulator ? "iphonesimulator" : "iphoneos")} clang {string.Join(" ", arches.Select(s => $"-arch {s}"))} -framework Security -shared -all_load -o ./bin/{libname}/ios/{subfolder_name}/lib{libname}.dylib {path_static}\n");
+        tw.Write($"xcrun --sdk {(simulator ? "iphonesimulator" : "iphoneos")} clang {string.Join(" ", arches.Select(s => $"-arch {s}"))} -shared -all_load -o ./bin/{libname}/ios/{subfolder_name}/lib{libname}.dylib {path_static}\n");
+        //tw.Write($"xcrun --sdk {(simulator ? "iphonesimulator" : "iphoneos")} clang {string.Join(" ", arches.Select(s => $"-arch {s}"))} -framework Security -shared -all_load -o ./bin/{libname}/ios/{subfolder_name}/lib{libname}.dylib {path_static}\n");
     }
 
     static void write_ios(
