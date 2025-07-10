@@ -953,8 +953,8 @@ public static class CB
                 tw.Write(" /MANIFEST /MANIFESTUAC:\"level='asInvoker' uiAccess='false'\" /manifest:embed");
             }
             if (
-                (flavor == Flavor.appcontainer) 
-                && 
+//                (flavor == Flavor.appcontainer) 
+//                && 
                 (
                     (vcversion == VCVersion.v140)
                     || (vcversion == VCVersion.v141)
@@ -967,7 +967,10 @@ public static class CB
                 {
                     tw.Write(" /LIBPATH:\"{0}\"", GetWindowsAppLibPath(machine));
                 }
-                tw.Write(" WindowsApp.lib");
+                if (flavor == Flavor.appcontainer)
+                {
+                  tw.Write(" WindowsApp.lib");
+                }
             }
             foreach (var s in libs)
             {
