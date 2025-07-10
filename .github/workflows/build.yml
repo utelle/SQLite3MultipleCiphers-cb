@@ -38,6 +38,20 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0
+    - name: Install ARM build tools for Visual Studio
+      if: startsWith(matrix.os, 'windows')
+      run: |
+        & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" `
+          modify `
+          --quiet `
+          --norestart `
+          --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" `
+          --add Microsoft.VisualStudio.Component.VC.ATL `
+          --add Microsoft.VisualStudio.Component.VC.ARM `
+          --add Microsoft.VisualStudio.Component.VC.ARM.MFC `
+          --add Microsoft.VisualStudio.Component.UWP.VC.ARM `
+          --add Microsoft.VisualStudio.Component.Windows10SDK.19041
+      shell: pwsh
     - name: Generate script
       run: dotnet run
       working-directory: cb/bld
