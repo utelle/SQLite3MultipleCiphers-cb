@@ -67,6 +67,9 @@ jobs:
     - name: Generate script
       run: dotnet run
       working-directory: cb/bld
+    - name: Show contents of .linkargs file
+      if: startsWith(matrix.os, 'windows')
+      run: type cb\bld\win_e_sqlite3mc_v143_appcontainer_arm.linkargs
     - name: Update permissions
       run: chmod +x *.sh 
       working-directory: cb/bld
