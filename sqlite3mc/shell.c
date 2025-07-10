@@ -11425,6 +11425,7 @@ int sqlite3PcacheTraceDeactivate(void){
 }
 
 /************************* End ../ext/misc/pcachetrace.c ********************/
+#ifndef SQLITE_OMIT_SHELL_SHATHREE
 /************************* Begin ../ext/misc/shathree.c ******************/
 /*
 ** 2017-03-08
@@ -12282,6 +12283,7 @@ int sqlite3_shathree_init(
 }
 
 /************************* End ../ext/misc/shathree.c ********************/
+#endif
 /************************* Begin ../ext/misc/sha1.c ******************/
 /*
 ** 2017-01-27
@@ -15272,6 +15274,7 @@ int sqlite3_ieee_init(
 }
 
 /************************* End ../ext/misc/ieee754.c ********************/
+#ifndef SQLITE_OMIT_SHELL_SERIES
 /************************* Begin ../ext/misc/series.c ******************/
 /*
 ** 2015-08-18, 2023-04-28
@@ -16143,6 +16146,8 @@ int sqlite3_series_init(
 }
 
 /************************* End ../ext/misc/series.c ********************/
+#endif
+#ifndef SQLITE_OMIT_SHELL_REGEXP
 /************************* Begin ../ext/misc/regexp.c ******************/
 /*
 ** 2012-11-13
@@ -17028,6 +17033,7 @@ int sqlite3_regexp_init(
 }
 
 /************************* End ../ext/misc/regexp.c ********************/
+#endif
 #ifndef SQLITE_SHELL_FIDDLE
 /************************* Begin ../ext/misc/fileio.c ******************/
 /*
@@ -17124,13 +17130,14 @@ SQLITE_EXTENSION_INIT1
 #  include <dirent.h>
 #  include <utime.h>
 #  include <sys/time.h>
+#  define STRUCT_STAT struct stat
 #else
 #  include "windows.h"
 #  include <io.h>
 #  include <direct.h>
 /* #  include "test_windirent.h" */
 #  define dirent DIRENT
-#  define stat _stat
+#  define STRUCT_STAT struct _stat
 #  define chmod(path,mode) fileio_chmod(path,mode)
 #  define mkdir(path,mode) fileio_mkdir(path)
 #endif
@@ -17321,7 +17328,7 @@ LPWSTR utf8_to_utf16(const char *z){
 */
 static void statTimesToUtc(
   const char *zPath,
-  struct stat *pStatBuf
+  STRUCT_STAT *pStatBuf
 ){
   HANDLE hFindFile;
   WIN32_FIND_DATAW fd;
@@ -17349,7 +17356,7 @@ static void statTimesToUtc(
 */
 static int fileStat(
   const char *zPath,
-  struct stat *pStatBuf
+  STRUCT_STAT *pStatBuf
 ){
 #if defined(_WIN32)
   sqlite3_int64 sz = strlen(zPath);
@@ -17373,7 +17380,7 @@ static int fileStat(
 */
 static int fileLinkStat(
   const char *zPath,
-  struct stat *pStatBuf
+  STRUCT_STAT *pStatBuf
 ){
 #if defined(_WIN32)
   return fileStat(zPath, pStatBuf);
@@ -17406,7 +17413,7 @@ static int makeDirectory(
     int i = 1;
 
     while( rc==SQLITE_OK ){
-      struct stat sStat;
+      STRUCT_STAT sStat;
       int rc2;
 
       for(; zCopy[i]!='/' && i<nCopy; i++);
@@ -17456,7 +17463,7 @@ static int writeFile(
         ** be an error though - if there is already a directory at the same
         ** path and either the permissions already match or can be changed
         ** to do so using chmod(), it is not an error.  */
-        struct stat sStat;
+        STRUCT_STAT sStat;
         if( errno!=EEXIST
          || 0!=fileStat(zFile, &sStat)
          || !S_ISDIR(sStat.st_mode)
@@ -17658,7 +17665,7 @@ struct fsdir_cursor {
   const char *zBase;
   int nBase;
 
-  struct stat sStat;         /* Current lstat() results */
+  STRUCT_STAT sStat;         /* Current lstat() results */
   char *zPath;               /* Path to current entry */
   sqlite3_int64 iRowid;      /* Current rowid */
 };
@@ -35167,16 +35174,22 @@ static void open_db(ShellState *p, int openFlags){
     sqlite3_enable_load_extension(p->db, 1);
 #endif
     sqlite3_sha_init(p->db, 0, 0);
+#ifndef SQLITE_OMIT_SHELL_SHATHREE
     sqlite3_shathree_init(p->db, 0, 0);
+#endif
     sqlite3_uint_init(p->db, 0, 0);
     sqlite3_stmtrand_init(p->db, 0, 0);
     sqlite3_decimal_init(p->db, 0, 0);
     sqlite3_percentile_init(p->db, 0, 0);
     sqlite3_base64_init(p->db, 0, 0);
     sqlite3_base85_init(p->db, 0, 0);
+#ifndef SQLITE_OMIT_SHELL_REGEXP
     sqlite3_regexp_init(p->db, 0, 0);
+#endif
     sqlite3_ieee_init(p->db, 0, 0);
+#ifndef SQLITE_OMIT_SHELL_SERIES
     sqlite3_series_init(p->db, 0, 0);
+#endif
 #ifndef SQLITE_SHELL_FIDDLE
     sqlite3_fileio_init(p->db, 0, 0);
     sqlite3_completion_init(p->db, 0, 0);
