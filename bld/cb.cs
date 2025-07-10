@@ -123,31 +123,24 @@ public static class CB
 
     private static string GetWindowsAppLibPath(Machine machine)
     {
-//        string sdkVersion = "10.0.19041.0"; // Wähle die, die du willst
-//        string basePath = @"C:\Program Files (x86)\Windows Kits\10\Lib\" + sdkVersion + @"\um\";
-
+        // Determine SDK base path and version number
         string sdkVersion = Environment.GetEnvironmentVariable("WindowsSdkVersion")?.TrimEnd('\\');
         string sdkBasePath = Environment.GetEnvironmentVariable("WindowsSdkDir");
 
-        string sdkLibPath = Path.Combine(
-            sdkBasePath ?? @"C:\Program Files (x86)\Windows Kits\10\Lib",
-            sdkVersion ?? "10.0.19041.0",
-            "um",
-            machine.ToString().ToLower()
-        );
-        switch (machine)
+        if (string.IsNullOrEmpty(sdkBasePath) || string.IsNullOrEmpty(sdkVersion))
         {
-            case Machine.x86:
-                return sdkBasePath + "x86";
-            case Machine.x64:
-                return sdkBasePath + "x64";
-            case Machine.arm:
-                return sdkBasePath + "arm";
-            case Machine.arm64:
-                return sdkBasePath + "arm64";
-            default:
-                throw new NotImplementedException($"Unknown machine type: {machine}");
+            // Fallback values if environment variable not set
+            sdkBasePath = @"C:\Program Files (x86)\Windows Kits\10\Lib";
+            sdkVersion = "10.0.19041.0";
         }
+
+        // Determine target architecture
+        string arch = machine.ToString().ToLowerInvariant();
+
+        // Build full path to WindowsApp.lib
+        string fullPath = Path.Combine(sdkBasePath, sdkVersion, "um", arch);
+
+        return fullPath;
     }
 
 // sudo apt-get install gcc-arm-linux-gnueabihf
