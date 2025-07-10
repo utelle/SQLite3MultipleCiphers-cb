@@ -54,7 +54,9 @@ jobs:
           --add Microsoft.VisualStudio.Component.VC.ARM `
           --add Microsoft.VisualStudio.Component.VC.ARM.MFC `
           --add Microsoft.VisualStudio.Component.UWP.VC.ARM `
-          --add Microsoft.VisualStudio.Component.Windows10SDK.19041
+          --add Microsoft.VisualStudio.ComponentGroup.UWP.Support `
+          --add Microsoft.VisualStudio.Component.Windows10SDK.19041 `
+          --add Microsoft.VisualStudio.Component.Windows10SDK.IOT.UWP
       shell: pwsh
     - name: Generate script
       run: dotnet run
