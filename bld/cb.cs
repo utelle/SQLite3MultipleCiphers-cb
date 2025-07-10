@@ -121,6 +121,35 @@ public static class CB
         }
     }
 
+    private static string GetWindowsAppLibPath(Machine machine)
+    {
+//        string sdkVersion = "10.0.19041.0"; // Wähle die, die du willst
+//        string basePath = @"C:\Program Files (x86)\Windows Kits\10\Lib\" + sdkVersion + @"\um\";
+
+        string sdkVersion = Environment.GetEnvironmentVariable("WindowsSdkVersion")?.TrimEnd('\\');
+        string sdkBasePath = Environment.GetEnvironmentVariable("WindowsSdkDir");
+
+        string sdkLibPath = Path.Combine(
+            sdkBasePath ?? @"C:\Program Files (x86)\Windows Kits\10\Lib",
+            sdkVersion ?? "10.0.19041.0",
+            "um",
+            machine.ToString().ToLower()
+        );
+        switch (machine)
+        {
+            case Machine.x86:
+                return sdkBasePath + "x86";
+            case Machine.x64:
+                return sdkBasePath + "x64";
+            case Machine.arm:
+                return sdkBasePath + "arm";
+            case Machine.arm64:
+                return sdkBasePath + "arm64";
+            default:
+                throw new NotImplementedException($"Unknown machine type: {machine}");
+        }
+    }
+
 // sudo apt-get install gcc-arm-linux-gnueabihf
 // sudo apt-get install musl-dev musl-tools
 // sudo apt-get install gcc-aarch64-linux-gnu
@@ -941,6 +970,10 @@ public static class CB
                     )
                 )
             {
+                if (machine == Machine.arm)
+                {
+                    tw.Write(" /LIBPATH:\"{0}\"", GetWindowsAppLibPath(machine));
+                }
                 tw.Write(" WindowsApp.lib");
             }
             foreach (var s in libs)
