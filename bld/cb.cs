@@ -13,6 +13,7 @@ public static class CB
         v140,
         v141,
         v142,
+        v143,
     }
 
     enum Machine
@@ -72,6 +73,8 @@ public static class CB
                 return "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build\\vcvarsall.bat";
             case VCVersion.v142:
                 return "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Enterprise\\VC\\Auxiliary\\Build\\vcvarsall.bat";
+            case VCVersion.v143:
+                return "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Auxiliary\\Build\\vcvarsall.bat";
             default:
                 throw new NotImplementedException();
         }
@@ -97,6 +100,7 @@ public static class CB
                 }
             case VCVersion.v141:
             case VCVersion.v142:
+            case VCVersion.v143:
                 switch (m)
                 {
                     case Machine.x86:
@@ -933,6 +937,7 @@ public static class CB
                     (vcversion == VCVersion.v140)
                     || (vcversion == VCVersion.v141)
                     || (vcversion == VCVersion.v142)
+                    || (vcversion == VCVersion.v143)
                     )
                 )
             {
@@ -963,6 +968,7 @@ public static class CB
                     (vcversion == VCVersion.v140) 
                     || (vcversion == VCVersion.v141)
                     || (vcversion == VCVersion.v142)
+                    || (vcversion == VCVersion.v143)
                     )
                 )
             {
@@ -1297,15 +1303,15 @@ public static class CB
         {
             var trios = new win_target[]
             {
-                new win_target(VCVersion.v142, Flavor.plain, Machine.x86),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.x64),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.arm),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.arm64),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.x86),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.x64),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.arm),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.arm64),
 
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.x86),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.x64),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.arm),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.arm64),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x86),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x64),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm64),
             };
 
             var defines = new Dictionary<string,string>();
@@ -1505,15 +1511,15 @@ public static class CB
         {
             var trios = new win_target[]
             {
-                new win_target(VCVersion.v142, Flavor.plain, Machine.x86),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.x64),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.arm),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.arm64),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.x86),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.x64),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.arm),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.arm64),
 
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.x86),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.x64),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.arm),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.arm64),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x86),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x64),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm64),
             };
 
             var defines = new Dictionary<string,string>
@@ -1779,15 +1785,15 @@ public static class CB
         {
             var trios = new win_target[]
             {
-                new win_target(VCVersion.v142, Flavor.plain, Machine.x86),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.x64),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.arm),
-                new win_target(VCVersion.v142, Flavor.plain, Machine.arm64),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.x86),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.x64),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.arm),
+                new win_target(VCVersion.v143, Flavor.plain, Machine.arm64),
 
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.x86),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.x64),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.arm),
-                new win_target(VCVersion.v142, Flavor.appcontainer, Machine.arm64),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x86),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x64),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm),
+                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm64),
             };
 
             var defines = new Dictionary<string,string>
