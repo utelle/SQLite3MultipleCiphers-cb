@@ -2,11 +2,11 @@ name: Build
 
 on:
   push:
-    branches: [ master, sqlite3mc ]
+    branches: [ sqlite3mc ]
     paths-ignore:
     - 'bld/bin/**'
   pull_request:
-    branches: [ master, sqlite3mc ]
+    branches: [ sqlite3mc ]
     paths-ignore:
     - 'bld/bin/**'
 
@@ -14,7 +14,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-24.04, macos-latest, windows-2019]
+        os: [ubuntu-24.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
@@ -154,7 +154,7 @@ jobs:
 #    strategy:
 #      matrix:
 #        # TODO want macos-latest here too, but the build currently fails there
-#        os: [windows-2019]
+#        os: [windows-latest]
 #    runs-on: ${{ matrix.os }}
 #    steps:
 #    - uses: actions/checkout@v4
@@ -183,7 +183,7 @@ jobs:
 #        path: cb/bld/bin
 #    - uses: actions/download-artifact@v4
 #      with:
-#        name: bin-windows-2019
+#        name: bin-windows-latest
 #        path: cb/bld/bin
 #    - uses: actions/download-artifact@v4
 #      with:
@@ -250,7 +250,7 @@ jobs:
         path: bld/bin
     - uses: actions/download-artifact@v4
       with:
-        name: bin-windows-2019
+        name: bin-windows-latest
         path: bld/bin
     - uses: actions/download-artifact@v4
       with:
