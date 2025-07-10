@@ -22,10 +22,12 @@ jobs:
         path: "cb"
 
     - name: Download musl-cc binaries
+      if: startsWith(matrix.os, 'ubuntu')
+      shell: bash
       run: |
         mkdir -p musl-cc
         for filename in aarch64-linux-musl-cross.tgz arm-linux-musleabihf-cross.tgz riscv64-linux-musl-cross.tgz s390x-linux-musl-cross.tgz ; do
-          curl -H "Authorization: token ${{ secrets.RELEASE_PAT }}" \
+          curl -H "Authorization: token ${{ secrets.MUSL_CC_BIN }}" \
                -L -o musl-cc/$filename \
                https://github.com/utelle/musl-cc-binaries-priv/releases/download/v1.0.0/$filename
         done
