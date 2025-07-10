@@ -38,12 +38,16 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0
+    - name: Show installed Visual Studio instances
+      if: startsWith(matrix.os, 'windows')
+      run: |
+        & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -all -products * -format json
+      shell: pwsh
     - name: Install ARM build tools for Visual Studio
       if: startsWith(matrix.os, 'windows')
       run: |
         & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" `
           modify `
-          --quiet `
           --norestart `
           --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" `
           --add Microsoft.VisualStudio.Component.VC.ATL `
