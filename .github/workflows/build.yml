@@ -59,11 +59,12 @@ jobs:
           --add Microsoft.VisualStudio.ComponentGroup.UWP.Support `
           --add Microsoft.VisualStudio.ComponentGroup.UWP.VC `
           --add Microsoft.VisualStudio.Component.UWP.VC.ARM `
-          --add Microsoft.VisualStudio.Component.Windows10SDK.19041 `
+          --add Microsoft.VisualStudio.Component.Windows10SDK.26100 `
           --add Microsoft.VisualStudio.Component.Windows10SDK.IOT.UWP `
           --add Microsoft.VisualStudio.Component.VC.ATL `
           --add Microsoft.VisualStudio.Component.VC.ARM.MFC `
-          --add Microsoft.VisualStudio.Component.VC.ARM
+          --add Microsoft.VisualStudio.Component.VC.ARM `
+          --includeRecommended
       shell: pwsh
     - name: Check for WindowsApp.lib (ARM32)
       if: startsWith(matrix.os, 'windows')
