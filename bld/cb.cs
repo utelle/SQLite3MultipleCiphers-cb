@@ -1542,12 +1542,12 @@ public static class CB
             {
                 new win_target(VCVersion.v143, Flavor.plain, Machine.x86),
                 new win_target(VCVersion.v143, Flavor.plain, Machine.x64),
-                new win_target(VCVersion.v143, Flavor.plain, Machine.arm),
+                //new win_target(VCVersion.v143, Flavor.plain, Machine.arm),
                 new win_target(VCVersion.v143, Flavor.plain, Machine.arm64),
 
                 new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x86),
                 new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x64),
-                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm),
+                //new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm),
                 new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm64),
             };
 
@@ -1816,12 +1816,12 @@ public static class CB
             {
                 new win_target(VCVersion.v143, Flavor.plain, Machine.x86),
                 new win_target(VCVersion.v143, Flavor.plain, Machine.x64),
-                new win_target(VCVersion.v143, Flavor.plain, Machine.arm),
+                //new win_target(VCVersion.v143, Flavor.plain, Machine.arm),
                 new win_target(VCVersion.v143, Flavor.plain, Machine.arm64),
 
                 new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x86),
                 new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x64),
-                new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm),
+                //new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm),
                 new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm64),
             };
 
