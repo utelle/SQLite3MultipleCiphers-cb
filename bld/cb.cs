@@ -856,7 +856,7 @@ public static class CB
     {
         var dest_sh = string.Format("ios_{0}.sh", libname);
         var arches_simulator = new string[] {
-            "i386",
+            //"i386",
             "x86_64",
             "arm64",
         };
