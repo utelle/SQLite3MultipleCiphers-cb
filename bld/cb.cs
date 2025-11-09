@@ -862,8 +862,8 @@ public static class CB
         };
         var arches_device = new string[] {
             "arm64",
-            "armv7",
-            "armv7s",
+            //"armv7",
+            //"armv7s",
         };
         using (TextWriter tw = new StreamWriter(dest_sh))
         {
