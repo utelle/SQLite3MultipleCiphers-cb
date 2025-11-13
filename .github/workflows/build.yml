@@ -23,8 +23,8 @@ jobs:
 
     - name: Download musl-cc binaries
       if: startsWith(matrix.os, 'ubuntu')
-      env:
-        GH_TOKEN: ${{ secrets.MUSL_CC_BIN }}
+      #env:
+      #  GH_TOKEN: ${{ secrets.MUSL_CC_BIN }}
       run: |
         echo "${{ secrets.MUSL_CC_BIN }}" | gh auth login --with-token
         mkdir -p musl-cc
