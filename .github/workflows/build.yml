@@ -26,7 +26,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.MUSL_CC_BIN }}
       run: |
-        echo "${GH_TOKEN}" | gh auth login --with-token
+        echo "${{ secrets.MUSL_CC_BIN }}" | gh auth login --with-token
         mkdir -p musl-cc
         gh release download v1.0.0 \
           --repo utelle/musl-cc-binaries-priv \
