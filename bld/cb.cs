@@ -304,6 +304,7 @@ public static class CB
             tw.Write("LOCAL_MODULE := lib{0}\n", libname);
             tw.Write("LOCAL_MODULE_FILENAME := lib{0}\n", libname);
             tw.Write("LOCAL_CFLAGS := -O {0}\n", string.Join(" ", defs));
+            tw.Write("ifeq ($(TARGET_ARCH_ABI),arm64-v8a)\nLOCAL_CFLAGS += -march=armv8-a+aes+crypto\nendif\n");
             tw.Write("ifeq ($(TARGET_ARCH_ABI),x86)\nLOCAL_CFLAGS += -maes -msse4.2\nendif\n");
             tw.Write("ifeq ($(TARGET_ARCH_ABI),x86_64)\nLOCAL_CFLAGS += -maes -msse4.2\nendif\n");
             tw.Write("LOCAL_LDFLAGS += \"-Wl,-z,max-page-size=16384\"\n");
