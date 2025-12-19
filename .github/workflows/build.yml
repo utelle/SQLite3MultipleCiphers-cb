@@ -40,7 +40,7 @@ jobs:
       if: startsWith(matrix.os, 'ubuntu')
       uses: nttld/setup-ndk@v1
       with:
-        ndk-version: r21e
+        ndk-version: r26d
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
