@@ -288224,16 +288224,10 @@ int aegis_runtime_has_altivec(void);
 #ifndef AEGIS_COMMON_H
 #define AEGIS_COMMON_H
 
-#if defined(__wasm__) && !defined(__wasi__)
-static int errno;
-#define memcpy(A, B, C) __builtin_memcpy((A), (B), (C))
-#define memset(A, B, C) __builtin_memset((A), (B), (C))
-#else
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#endif
 
 /* #include "../include/aegis.h" */
 /*** Begin of #include "../include/aegis.h" ***/
