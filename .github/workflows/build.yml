@@ -9,3 +9,5 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build-reusable.yml
+    secrets:
+      MUSL_CC_BIN: ${{ secrets.MUSL_CC_BIN }}

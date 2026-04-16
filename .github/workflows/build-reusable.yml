@@ -2,6 +2,9 @@ name: Reusable Build
 
 on:
   workflow_call:
+    secrets:
+      MUSL_CC_BIN:
+        required: true
 
 jobs:
   build:
