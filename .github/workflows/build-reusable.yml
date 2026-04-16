@@ -2,8 +2,6 @@ name: Reusable Build
 
 on:
   workflow_call:
-    paths-ignore:
-    - 'bld/bin/**'
 
 jobs:
   build:
