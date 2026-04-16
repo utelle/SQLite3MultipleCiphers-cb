@@ -96,9 +96,9 @@ jobs:
     - name: Configure Git
       if: ${{ inputs.mode != 'sanity' }}
       run: |
-        git config user.name ${{ vars.GIT_USER_NAME }}
-        git config user.email ${{ vars.GIT_USER_EMAIL }}
-        git config user.signingkey ${{ vars.GPG_KEY_ID }}
+        git config user.name "${{ vars.GIT_USER_NAME }}"
+        git config user.email "${{ vars.GIT_USER_EMAIL }}"
+        git config user.signingkey "${{ vars.GPG_KEY_ID }}"
         git config commit.gpgsign true
 
     - name: Import GPG key
