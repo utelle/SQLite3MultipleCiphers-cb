@@ -1,0 +1,139 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+      mode:
+        description: "Release mode"
+        required: true
+        type: choice
+        default: dry-run
+        options:
+          - sanity
+          - dry-run
+          - release
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-reusable.yml
+    secrets:
+      MUSL_CC_BIN: ${{ secrets.MUSL_CC_BIN }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    env:
+      MODE: ${{ inputs.mode }}
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    # -------------------------------------------------
+    # ARTIFACT HANDLING (always safe)
+    # -------------------------------------------------
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: bin-*
+        merge-multiple: true
+        path: release
+
+    - name: Fix permissions
+      run: |
+        find ./release -type f \( -name "*.so" -o -name "*.dylib" \) -exec chmod 0775 {} +
+
+    - name: Generate checksums
+      run: |
+        cd release
+        find . -type f -print0 \
+          | sort -z \
+          | xargs -0 sha256sum \
+          | sed 's|^\([^ ]*\)  \./|\1  |' \
+          > SHA256SUMS.txt
+
+    # -------------------------------------------------
+    # MODE INFO (central switch visibility)
+    # -------------------------------------------------
+    - name: Release mode info
+      run: |
+        echo "=============================="
+        echo "MODE: $MODE"
+        echo "VERSION: ${{ inputs.version }}"
+        echo "=============================="
+
+        case "$MODE" in
+          sanity)
+            echo "🔎 SANITY CHECK MODE (no side effects)"
+            ;;
+          dry-run)
+            echo "🧪 DRY RUN MODE (signing tested, no release)"
+            ;;
+          release)
+            echo "🚀 REAL RELEASE MODE (will publish)"
+            ;;
+        esac
+
+    # -------------------------------------------------
+    # SANITY MODE (no git, no gpg)
+    # -------------------------------------------------
+    - name: Sanity check environment
+      if: ${{ inputs.mode == 'sanity' }}
+      run: |
+        echo "Checking toolchain only..."
+        git --version
+        gpg --version
+        echo "Sanity check complete."
+
+    # -------------------------------------------------
+    # GIT + GPG SETUP (only for dry-run + release)
+    # -------------------------------------------------
+    - name: Configure Git
+      if: ${{ inputs.mode != 'sanity' }}
+      run: |
+        git config user.name ${{ vars.GIT_USER_NAME }}
+        git config user.email ${{ vars.GIT_USER_EMAIL }}
+        git config user.signingkey ${{ vars.GPG_KEY_ID }}
+        git config commit.gpgsign true
+
+    - name: Import GPG key
+      if: ${{ inputs.mode != 'sanity' }}
+      run: |
+        echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+    # -------------------------------------------------
+    # DRY RUN SIGNING VALIDATION
+    # -------------------------------------------------
+    - name: Dry-run signing validation
+      if: ${{ inputs.mode == 'dry-run' }}
+      run: |
+        echo "Testing GPG setup..."
+
+        gpg --list-secret-keys --keyid-format=long
+
+        echo "Testing commit signing..."
+        git commit --allow-empty -S -m "dry-run signing test"
+
+        echo "Verifying signature..."
+        git log -1 --show-signature
+
+    # -------------------------------------------------
+    # RELEASE ACTIONS (ONLY REAL MODE)
+    # -------------------------------------------------
+    - name: Create signed tag
+      if: ${{ inputs.mode == 'release' }}
+      run: |
+        git tag -s "${{ inputs.version }}" -m "Release ${{ inputs.version }}"
+        git push origin "${{ inputs.version }}"
+
+    - name: Create GitHub Release
+      if: ${{ inputs.mode == 'release' }}
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ inputs.version }}
+        files: release/**
