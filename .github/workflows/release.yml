@@ -38,7 +38,7 @@ jobs:
     # DOWNLOAD BUILD ARTIFACTS
     # -------------------------------------------------
     - name: Download artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         pattern: bin-*
         merge-multiple: true
@@ -57,7 +57,9 @@ jobs:
     - name: Generate checksums
       run: |
         cd release
-        find . -type f -print0 \
+        find . -type f \
+          ! -name "SHA256SUMS.txt" \
+            -print0 \
           | sort -z \
           | xargs -0 sha256sum \
           | sed 's|^\([^ ]*\)  \./|\1  |' \
@@ -110,7 +112,7 @@ jobs:
     # UPLOAD CHECKSUMS AND MANIFEST
     # -------------------------------------------------
     - name: Upload checksums and manifest
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: release-metadata-${{ inputs.version }}
         path: |
