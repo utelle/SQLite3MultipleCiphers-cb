@@ -35,7 +35,7 @@ jobs:
         fetch-depth: 0
 
     # -------------------------------------------------
-    # ARTIFACT HANDLING (always safe)
+    # DOWNLOAD BUILD ARTIFACTS
     # -------------------------------------------------
     - name: Download artifacts
       uses: actions/download-artifact@v4
@@ -44,10 +44,16 @@ jobs:
         merge-multiple: true
         path: release
 
+    # -------------------------------------------------
+    # FIX PERMISSIONS (shared libs etc.)
+    # -------------------------------------------------
     - name: Fix permissions
       run: |
         find ./release -type f \( -name "*.so" -o -name "*.dylib" \) -exec chmod 0775 {} +
 
+    # -------------------------------------------------
+    # CHECKSUMS (for individual files)
+    # -------------------------------------------------
     - name: Generate checksums
       run: |
         cd release
@@ -58,13 +64,68 @@ jobs:
           > SHA256SUMS.txt
 
     # -------------------------------------------------
-    # MODE INFO (central switch visibility)
+    # RELEASE SNAPSHOT ARCHIVE
+    # -------------------------------------------------
+    - name: Create release snapshot archive
+      run: |
+        ARCHIVE="release-${{ inputs.version }}.tar.gz"
+        tar -czf "$ARCHIVE" -C release .
+
+        echo "ARCHIVE_NAME=$ARCHIVE" >> $GITHUB_ENV
+
+    # -------------------------------------------------
+    # CHECKSUM OF SNAPSHOT ARCHIVE (important!)
+    # -------------------------------------------------
+    - name: Add archive checksum to manifest source
+      run: |
+        sha256sum "$ARCHIVE_NAME" >> release/SHA256SUMS.txt
+
+    # -------------------------------------------------
+    # MANIFEST GENERATION
+    # -------------------------------------------------
+    - name: Generate release manifest
+      run: |
+        cat > release/manifest.json <<EOF
+        {
+          "version": "${{ inputs.version }}",
+          "mode": "${{ inputs.mode }}",
+          "archive": "$ARCHIVE_NAME",
+          "files": [
+        EOF
+
+        find release -type f \
+          ! -name "manifest.json" \
+          ! -name "SHA256SUMS.txt" \
+          | sed 's|release/||' \
+          | sort \
+          | sed 's/.*/"&"/' \
+          | paste -sd "," - \
+          >> release/manifest.json
+
+        echo "" >> release/manifest.json
+        echo "  ]" >> release/manifest.json
+        echo "}" >> release/manifest.json
+
+    # -------------------------------------------------
+    # UPLOAD CHECKSUMS AND MANIFEST
+    # -------------------------------------------------
+    - name: Upload checksums and manifest
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-metadata-${{ inputs.version }}
+        path: |
+          release/SHA256SUMS.txt
+          release/manifest.json 
+
+    # -------------------------------------------------
+    # MODE INFO
     # -------------------------------------------------
     - name: Release mode info
       run: |
         echo "=============================="
         echo "MODE: $MODE"
         echo "VERSION: ${{ inputs.version }}"
+        echo "ARCHIVE: $ARCHIVE_NAME"
         echo "=============================="
 
         case "$MODE" in
@@ -91,7 +152,7 @@ jobs:
         echo "Sanity check complete."
 
     # -------------------------------------------------
-    # GIT + GPG SETUP (only for dry-run + release)
+    # GIT + GPG SETUP (only non-sanity)
     # -------------------------------------------------
     - name: Configure Git
       if: ${{ inputs.mode != 'sanity' }}
@@ -107,13 +168,12 @@ jobs:
         echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
 
     # -------------------------------------------------
-    # DRY RUN SIGNING VALIDATION
+    # DRY RUN VALIDATION
     # -------------------------------------------------
     - name: Dry-run signing validation
       if: ${{ inputs.mode == 'dry-run' }}
       run: |
         echo "Testing GPG setup..."
-
         gpg --list-secret-keys --keyid-format=long
 
         echo "Testing commit signing..."
@@ -123,7 +183,7 @@ jobs:
         git log -1 --show-signature
 
     # -------------------------------------------------
-    # RELEASE ACTIONS (ONLY REAL MODE)
+    # RELEASE STEP
     # -------------------------------------------------
     - name: Create signed tag
       if: ${{ inputs.mode == 'release' }}
@@ -136,4 +196,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ inputs.version }}
-        files: release/**
+        files: |
+          release-${{ inputs.version }}.tar.gz
+          release/SHA256SUMS.txt
+          release/manifest.json
