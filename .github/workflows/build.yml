@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ sqlite3mc ]
+    branches: [ sqlite3mc, version-info ]
   pull_request:
     branches: [ sqlite3mc ]
 
