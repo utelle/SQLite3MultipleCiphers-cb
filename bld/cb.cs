@@ -1,11 +1,26 @@
 using System;
 using System.Text;
+using System.Text.Json;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 
 public static class CB
 {
+    public class VersionInfo
+    {
+        public int VersionMajor { get; set; }
+        public int VersionMinor { get; set; }
+        public int VersionPatch { get; set; }
+        public int VersionBuild { get; set; }
+    }
+
+    public static int VersionMajor;
+    public static int VersionMinor;
+    public static int VersionPatch;
+    public static int VersionBuild;
+    public static string VersionString;
+
     enum VCVersion
     {
         v110,
@@ -141,6 +156,57 @@ public static class CB
         string fullPath = Path.Combine(sdkBasePath, sdkVersion, "um", arch);
 
         return fullPath;
+    }
+
+    static void write_version_rc(string rcfilename, string libname)
+    {
+        using (TextWriter tw = new StreamWriter(rcfilename, false, Encoding.Default))
+        {
+            // tw.WriteLine("VS_VERSION_INFO VERSIONINFO");
+            tw.WriteLine("1 VERSIONINFO");
+            tw.WriteLine(
+                "FILEVERSION {0},{1},{2},{3}",
+                VersionMajor,
+                VersionMinor,
+                VersionPatch,
+                VersionBuild);
+
+            tw.WriteLine(
+                "PRODUCTVERSION {0},{1},{2},{3}",
+                VersionMajor,
+                VersionMinor,
+                VersionPatch,
+                VersionBuild);
+
+            tw.WriteLine("FILEFLAGSMASK 0x3fL");
+            tw.WriteLine("FILEFLAGS 0x0L");
+            tw.WriteLine("FILEOS 0x40004L");
+            tw.WriteLine("FILETYPE 0x2L");
+            tw.WriteLine("FILESUBTYPE 0x0L");
+            tw.WriteLine("BEGIN");
+            tw.WriteLine("BLOCK \"StringFileInfo\"");
+            tw.WriteLine("BEGIN");
+            tw.WriteLine("BLOCK \"040904E4\"");
+            tw.WriteLine("BEGIN");
+
+            tw.WriteLine($"VALUE \"CompanyName\", \"SQLite3 Multiple Ciphers Development Team\"");
+            tw.WriteLine($"VALUE \"FileDescription\", \"SQLite3 Multiple Ciphers Database Library\"");
+            tw.WriteLine($"VALUE \"FileVersion\", \"{VersionString}\"");
+            tw.WriteLine($"VALUE \"InternalName\", \"{libname}\"");
+            tw.WriteLine($"VALUE \"LegalCopyright\", \"Copyright (C) 2019-{DateTime.Now.Year} Ulrich Telle\"");
+            tw.WriteLine($"VALUE \"OriginalFilename\", \"{libname}.dll\"");
+            tw.WriteLine($"VALUE \"ProductName\", \"SQLite3 Multiple Ciphers\"");
+            tw.WriteLine($"VALUE \"ProductVersion\", \"{VersionString}\"");
+
+            tw.WriteLine("END");
+            tw.WriteLine("END");
+
+            tw.WriteLine("BLOCK \"VarFileInfo\"");
+            tw.WriteLine("BEGIN");
+            tw.WriteLine("VALUE \"Translation\", 0x409, 1252");
+            tw.WriteLine("END");
+            tw.WriteLine("END");
+        }
     }
 
 // sudo apt-get install gcc-arm-linux-gnueabihf
@@ -895,6 +961,8 @@ public static class CB
         var subdir = t.subdir(libname);
         var dest_bat = t.bat(libname);
         var dest_linkargs = t.linkargs(libname);
+        string rcfile = t.rcname(libname);
+        string resfile = t.resname(libname);
         using (TextWriter tw = new StreamWriter(dest_linkargs))
         {
             tw.Write(" /nologo");
@@ -982,8 +1050,10 @@ public static class CB
                 var b = Path.GetFileNameWithoutExtension(s);
                 tw.Write(" obj\\{1}\\{0}.obj", b, subdir);
             }
+            tw.Write(" {0}", resfile);
             tw.WriteLine();
         }
+        write_version_rc(rcfile, libname);
         using (TextWriter tw = new StreamWriter(dest_bat))
         {
             tw.WriteLine("@echo on");
@@ -1079,6 +1149,7 @@ public static class CB
                 }
                 tw.WriteLine(" {0}", s);
             }
+            tw.WriteLine("rc.exe /v /fo {0} {1}", resfile, rcfile);
             tw.Write("link.exe");
             tw.Write(" @{0}", dest_linkargs);
             tw.WriteLine();
@@ -1112,6 +1183,16 @@ public static class CB
         public string linkargs(string libname)
         {
             var dest = string.Format("{0}.linkargs", basename(libname));
+            return dest;
+        }
+        public string rcname(string libname)
+        {
+            var dest = string.Format("{0}.rc", basename(libname));
+            return dest;
+        }
+        public string resname(string libname)
+        {
+            var dest = string.Format("{0}.res", basename(libname));
             return dest;
         }
         public string subdir(string libname)
@@ -1319,216 +1400,6 @@ public static class CB
     static void add_ios_sqlite3_defines(Dictionary<string,string> defines)
     {
         defines["SQLITE_OS_UNIX"] = null;
-    }
-
-    static void write_e_sqlite3(
-        )
-    {
-        var cfiles = new string[]
-        {
-            "..\\sqlite3\\sqlite3.c",
-            "..\\stubs\\stubs.c",
-        };
-
-        {
-            var trios = new win_target[]
-            {
-                new win_target(VCVersion.v143, Flavor.plain, Machine.x86),
-                new win_target(VCVersion.v143, Flavor.plain, Machine.x64),
-                //new win_target(VCVersion.v143, Flavor.plain, Machine.arm),
-                new win_target(VCVersion.v143, Flavor.plain, Machine.arm64),
-
-                //new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x86),
-                //new win_target(VCVersion.v143, Flavor.appcontainer, Machine.x64),
-                //new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm),
-                //new win_target(VCVersion.v143, Flavor.appcontainer, Machine.arm64),
-            };
-
-            var defines = new Dictionary<string,string>();
-            add_basic_sqlite3_defines(defines);
-            add_win_sqlite3_defines(defines);
-            var includes = new string[]
-            {
-            };
-            var libs = new string[]
-            {
-            };
-            write_win_multi(
-                "e_sqlite3",
-                trios,
-                cfiles,
-                defines,
-                includes,
-                libs
-                );
-        }
-
-        {
-            var defines = new Dictionary<string,string>();
-            add_basic_sqlite3_defines(defines);
-            add_linux_sqlite3_defines(defines);
-            var includes = new string[]
-            {
-            };
-            var libs = new string[]
-            {
-            };
-
-            var targets_regular = new linux_target[]
-            {
-                new linux_target("x64"),
-                new linux_target("x86"),
-            };
-
-            var targets_cross = new linux_target[]
-            {
-                new linux_target("musl-x64"),
-                new linux_target("musl-arm64"),
-                new linux_target("musl-armhf"),
-                new linux_target("musl-s390x"),
-                new linux_target("musl-riscv64"),
-                new linux_target("arm64"),
-                new linux_target("armhf"),
-                new linux_target("armsf"),
-                new linux_target("mips64"),
-                new linux_target("s390x"),
-                new linux_target("ppc64le"),
-                new linux_target("riscv64"),
-            };
-
-            write_linux_multi(
-                "e_sqlite3",
-                "regular",
-                targets_regular,
-                cfiles,
-                defines,
-                includes,
-                libs
-                );
-
-            write_linux_multi(
-                "e_sqlite3",
-                "cross",
-                targets_cross,
-                cfiles,
-                defines,
-                includes,
-                libs
-                );
-        }
-
-        {
-            var defines = new Dictionary<string,string>();
-            add_basic_sqlite3_defines(defines);
-            add_android_sqlite3_defines(defines);
-            var includes = new string[]
-            {
-            };
-            var libs = new string[]
-            {
-            };
-
-            var targets = new android_target[]
-            {
-                //new android_target("armeabi"),
-                new android_target("armeabi-v7a"),
-                new android_target("arm64-v8a"),
-                new android_target("x86"),
-                new android_target("x86_64"),
-            };
-
-#if true
-            write_android_ndk_build(
-                "e_sqlite3",
-                targets,
-                cfiles,
-                defines,
-                includes,
-                libs
-                );
-#else
-            write_android_multi(
-                "e_sqlite3",
-                targets,
-                cfiles,
-                defines,
-                includes,
-                libs
-                );
-#endif
-        }
-
-        {
-            var defines = new Dictionary<string, string>();
-            add_basic_sqlite3_defines(defines);
-            add_wasm_sqlite3_defines(defines);
-            var includes = new string[]
-            {
-            };
-            var libs = new string[]
-            {
-            };
-
-            write_wasm(
-                "e_sqlite3",
-                cfiles.Select(x => x.Replace("\\", "/")).ToArray(),
-                defines,
-                includes.Select(x => x.Replace("\\", "/")).ToArray(),
-                libs);
-        }
-
-        {
-            var defines = new Dictionary<string,string>();
-            add_basic_sqlite3_defines(defines);
-            add_ios_sqlite3_defines(defines);
-            var includes = new string[]
-            {
-            };
-            var libs = new string[]
-            {
-            };
-
-            write_ios(
-                "e_sqlite3",
-                cfiles.Select(x => x.Replace("\\", "/")).ToArray(),
-                defines,
-                includes.Select(x => x.Replace("\\", "/")).ToArray(),
-                libs
-                );
-
-            write_tvos(
-                "e_sqlite3",
-                cfiles.Select(x => x.Replace("\\", "/")).ToArray(),
-                defines,
-                includes.Select(x => x.Replace("\\", "/")).ToArray(),
-                libs
-                );
-
-            write_mac_dynamic(
-                "e_sqlite3",
-                cfiles.Select(x => x.Replace("\\", "/")).ToArray(),
-                defines,
-                includes.Select(x => x.Replace("\\", "/")).ToArray(),
-                libs
-                );
-
-            write_maccatalyst_dynamic(
-                "e_sqlite3",
-                cfiles.Select(x => x.Replace("\\", "/")).ToArray(),
-                defines,
-                includes.Select(x => x.Replace("\\", "/")).ToArray(),
-                libs
-                );
-
-            write_mac_static(
-                "e_sqlite3",
-                cfiles.Select(x => x.Replace("\\", "/")).ToArray(),
-                defines,
-                includes.Select(x => x.Replace("\\", "/")).ToArray(),
-                libs
-                );
-        }
-
     }
 
     static void write_e_sqlite3mc()
@@ -2079,9 +1950,23 @@ public static class CB
 
     }
 
+    private static void LoadVersionInfo(string path)
+    {
+        var json = File.ReadAllText(path);
+        var v = JsonSerializer.Deserialize<VersionInfo>(json);
+
+        VersionMajor = v.VersionMajor;
+        VersionMinor = v.VersionMinor;
+        VersionPatch = v.VersionPatch;
+        VersionBuild = v.VersionBuild;
+        VersionString = $"{VersionMajor}.{VersionMinor}.{VersionPatch}";
+    }
+
     public static void Main()
     {
-//        write_e_sqlite3();
+        LoadVersionInfo("versioninfo.json");
+        Console.WriteLine($"{VersionMajor}.{VersionMinor}.{VersionPatch}.{VersionBuild}");
+
 //        write_e_sqlite3mc();
         write_sqlite3mc();
     }
