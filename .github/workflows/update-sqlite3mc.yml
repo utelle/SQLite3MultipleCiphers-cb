@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write
   attestations: read
-  id-token: read
+  id-token: write
 
 jobs:
   update:
@@ -48,7 +48,7 @@ jobs:
               --json assets \
               --jq '
                 .assets[]
-                | select(.name | test("^sqlite3mc-'"${VERSION}"'-sqlite-.*-amalgamation\\.zip$"))
+                | select(.name | test("^sqlite3mc-'"${VERSION}"'-sqlite-[0-9.]+-amalgamation\\.zip$"))
                 | .name
               '
           )
@@ -77,9 +77,10 @@ jobs:
       #    GH_TOKEN: ${{ github.token }}
       #  run: |
       #    FILE="download/${{ steps.asset.outputs.asset_name }}"
-
+      #    echo "Verifying GitHub attestation for $FILE"
       #    gh attestation verify "$FILE" \
       #      --repo utelle/SQLite3MultipleCiphers
+      #    echo "Attestation verification successful"
 
       - name: Extract archive
         run: |
@@ -89,37 +90,46 @@ jobs:
             "download/${{ steps.asset.outputs.asset_name }}" \
             -d extracted
 
-      #- name: Replace sqlite3mc contents
-      #  run: |
-      #    rm -rf sqlite3mc/*
-      #    cp -R extracted/* sqlite3mc/
 
-      #- name: Write version metadata
-      #  env:
-      #    VERSION: ${{ inputs.version }}
-      #  run: |
-      #    cat > sqlite3mc/version.json <<EOF
-      #    {
-      #      "sqlite3mcVersion": "${VERSION}",
-      #      "sourceRepository": "utelle/SQLite3MultipleCiphers",
-      #      "sourceTag": "v${VERSION}"
-      #    }
-      #    EOF
+      - name: Prepare sqlite3mc directory
+        run: |
+          mkdir -p sqlite3mc
+
+          cp extracted/sqlite3mc_amalgamation.c sqlite3mc/sqlite3.c
+          cp extracted/sqlite3mc_amalgamation.h sqlite3mc/sqlite3.h
+          cp extracted/shell3mc_amalgamation.c sqlite3mc/shell.c
+          cp extracted/sqlite3ext.h sqlite3mc/sqlite3ext.h
+
+      - name: Write version.json
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          cat > sqlite3mc/version.json <<EOF
+          {
+            "VersionMajor": ${MAJOR},
+            "VersionMinor": ${MINOR},
+            "VersionPatch": ${PATCH},
+            "VersionBuild": 0
+          }
+          EOF
 
       #- name: Commit changes
       #  env:
       #    VERSION: ${{ inputs.version }}
       #  run: |
-      #    if git diff --quiet; then
-      #      echo "No changes"
-      #      exit 0
-      #    fi
-
       #    git config user.name "github-actions[bot]"
       #    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      #    git add sqlite3mc
-
+      #    git add \
+      #      sqlite3mc/sqlite3.c \
+      #      sqlite3mc/sqlite3.h \
+      #      sqlite3mc/sqlite3ext.h \
+      #      sqlite3mc/shell.c \
+      #      sqlite3mc/version.json
+      #    if git diff --cached --quiet; then
+      #      echo "No changes detected"
+      #      exit 0
+      #    fi
       #    git commit -m "Update SQLite3MultipleCiphers to ${VERSION}"
-
       #    git push
