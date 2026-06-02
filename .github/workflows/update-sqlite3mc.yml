@@ -1,0 +1,125 @@
+name: Update SQLite3MC
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "SQLite3MC version (x.y.z)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  attestations: read
+  id-token: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate version format
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format: $VERSION"
+            exit 1
+          fi
+
+      - name: Install GitHub CLI extensions
+        run: |
+          gh --version
+
+      - name: Resolve release asset
+        id: asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          TAG="v${VERSION}"
+
+          ASSET_NAME=$(
+            gh release view "$TAG" \
+              --repo utelle/SQLite3MultipleCiphers \
+              --json assets \
+              --jq '
+                .assets[]
+                | select(.name | test("^sqlite3mc-'"${VERSION}"'-sqlite-.*-amalgamation\\.zip$"))
+                | .name
+              '
+          )
+
+          if [ -z "$ASSET_NAME" ]; then
+            echo "No matching asset found"
+            exit 1
+          fi
+
+          echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir -p download
+
+          gh release download "v${VERSION}" \
+            --repo utelle/SQLite3MultipleCiphers \
+            --pattern "${{ steps.asset.outputs.asset_name }}" \
+            --dir download
+
+      #- name: Verify GitHub Attestation
+      #  env:
+      #    GH_TOKEN: ${{ github.token }}
+      #  run: |
+      #    FILE="download/${{ steps.asset.outputs.asset_name }}"
+
+      #    gh attestation verify "$FILE" \
+      #      --repo utelle/SQLite3MultipleCiphers
+
+      - name: Extract archive
+        run: |
+          mkdir extracted
+
+          unzip \
+            "download/${{ steps.asset.outputs.asset_name }}" \
+            -d extracted
+
+      #- name: Replace sqlite3mc contents
+      #  run: |
+      #    rm -rf sqlite3mc/*
+      #    cp -R extracted/* sqlite3mc/
+
+      #- name: Write version metadata
+      #  env:
+      #    VERSION: ${{ inputs.version }}
+      #  run: |
+      #    cat > sqlite3mc/version.json <<EOF
+      #    {
+      #      "sqlite3mcVersion": "${VERSION}",
+      #      "sourceRepository": "utelle/SQLite3MultipleCiphers",
+      #      "sourceTag": "v${VERSION}"
+      #    }
+      #    EOF
+
+      #- name: Commit changes
+      #  env:
+      #    VERSION: ${{ inputs.version }}
+      #  run: |
+      #    if git diff --quiet; then
+      #      echo "No changes"
+      #      exit 0
+      #    fi
+
+      #    git config user.name "github-actions[bot]"
+      #    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      #    git add sqlite3mc
+
+      #    git commit -m "Update SQLite3MultipleCiphers to ${VERSION}"
+
+      #    git push
