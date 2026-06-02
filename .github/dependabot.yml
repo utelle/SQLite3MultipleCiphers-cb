@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Keeps the Action commit SHAs pinned in workflows up to date.
+  # Dependabot updates both the SHA and the "# vX" comment.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    # All action updates in a single PR instead of individually:
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    # Note: Dependabot reads this file from the default branch. If you want the
+    # updates to run against the working branch instead, add the following:
+    #   target-branch: "sqlite3mc"

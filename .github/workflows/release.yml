@@ -16,6 +16,13 @@ on:
           - dry-run
           - release
 
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     uses: ./.github/workflows/build-reusable.yml
@@ -25,14 +32,37 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write       # OIDC token for keyless Sigstore signing
+      attestations: write   # write build provenance attestation
 
     env:
       MODE: ${{ inputs.mode }}
 
     steps:
-    - uses: actions/checkout@v6
+
+    # -------------------------------------------------
+    # Checkout repository
+    # -------------------------------------------------
+    - name: Checkout repository
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
+
+    # -------------------------------------------------
+    # VALIDATE VERSION FORMAT
+    # Must be vX.Y.Z so the -NuGet consumer (release-v<ver>.tar.gz,
+    # manifest "version": "v<ver>") stays consistent.
+    # -------------------------------------------------
+    - name: Validate version format
+      run: |
+        set -euo pipefail
+        case "${{ inputs.version }}" in
+          v*) echo "Version OK: ${{ inputs.version }}" ;;
+          *)  echo "::error::version must start with 'v' (e.g. v2.3.4); got '${{ inputs.version }}'"; exit 1 ;;
+        esac
 
     # -------------------------------------------------
     # DOWNLOAD BUILD ARTIFACTS
@@ -185,17 +215,36 @@ jobs:
         git log -1 --show-signature
 
     # -------------------------------------------------
-    # RELEASE STEP
+    # GENERATE SLSA-ALIGNED BUILD PROVENANCE
+    # -------------------------------------------------
+    - name: Generate build provenance
+      if: ${{ inputs.mode == 'release' }}
+      uses: actions/attest-build-provenance@v4
+      with:
+        # Attest the snapshot archive that the -NuGet repo consumes & verifies.
+        # (Add individual binary globs here if you also want per-file attestation.)
+        subject-path: release-${{ inputs.version }}.tar.gz
+
+    # -------------------------------------------------
+    # Create signed tag for release
     # -------------------------------------------------
     - name: Create signed tag
       if: ${{ inputs.mode == 'release' }}
       run: |
+        set -euo pipefail
+        if git rev-parse -q --verify "refs/tags/${{ inputs.version }}" >/dev/null; then
+          echo "::error::Tag ${{ inputs.version }} already exists"
+          exit 1
+        fi
         git tag -s "${{ inputs.version }}" -m "Release ${{ inputs.version }}"
         git push origin "${{ inputs.version }}"
 
+    # -------------------------------------------------
+    # Create GitHub release
+    # -------------------------------------------------
     - name: Create GitHub Release
       if: ${{ inputs.mode == 'release' }}
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
       with:
         tag_name: ${{ inputs.version }}
         files: |
