@@ -53,9 +53,9 @@ jobs:
       run: |
         set -euo pipefail
 
-        VERSION_MAJOR=$(jq -r '.VersionMajor' versioninfo.json)
-        VERSION_MINOR=$(jq -r '.VersionMinor' versioninfo.json)
-        VERSION_PATCH=$(jq -r '.VersionPatch' versioninfo.json)
+        VERSION_MAJOR=$(jq -r '.VersionMajor' bld/versioninfo.json)
+        VERSION_MINOR=$(jq -r '.VersionMinor' bld/versioninfo.json)
+        VERSION_PATCH=$(jq -r '.VersionPatch' bld/versioninfo.json)
 
         # For actual releases only major, minor, and patch are used
         VERSION="v${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
