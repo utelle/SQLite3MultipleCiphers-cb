@@ -3,9 +3,6 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Release version"
-        required: true
       mode:
         description: "Release mode"
         required: true
@@ -51,18 +48,22 @@ jobs:
       with:
         fetch-depth: 0
 
-    # -------------------------------------------------
-    # VALIDATE VERSION FORMAT
-    # Must be vX.Y.Z so the -NuGet consumer (release-v<ver>.tar.gz,
-    # manifest "version": "v<ver>") stays consistent.
-    # -------------------------------------------------
-    - name: Validate version format
+    - name: Read version from versioninfo.json
+      id: version
       run: |
         set -euo pipefail
-        case "${{ inputs.version }}" in
-          v*) echo "Version OK: ${{ inputs.version }}" ;;
-          *)  echo "::error::version must start with 'v' (e.g. v2.3.4); got '${{ inputs.version }}'"; exit 1 ;;
-        esac
+
+        VERSION_MAJOR=$(jq -r '.VersionMajor' versioninfo.json)
+        VERSION_MINOR=$(jq -r '.VersionMinor' versioninfo.json)
+        VERSION_PATCH=$(jq -r '.VersionPatch' versioninfo.json)
+
+        # For actual releases only major, minor, and patch are used
+        VERSION="v${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
+
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        #echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+        echo "Resolved version: $VERSION"
 
     # -------------------------------------------------
     # DOWNLOAD BUILD ARTIFACTS
@@ -79,6 +80,7 @@ jobs:
     # -------------------------------------------------
     - name: Fix permissions
       run: |
+        set -euo pipefail
         find ./release -type f \( -name "*.so" -o -name "*.dylib" \) -exec chmod 0775 {} +
 
     # -------------------------------------------------
@@ -86,6 +88,7 @@ jobs:
     # -------------------------------------------------
     - name: Generate checksums
       run: |
+        set -euo pipefail
         cd release
         find . -type f \
           ! -name "SHA256SUMS.txt" \
@@ -100,7 +103,8 @@ jobs:
     # -------------------------------------------------
     - name: Create release snapshot archive
       run: |
-        ARCHIVE="release-${{ inputs.version }}.tar.gz"
+        set -euo pipefail
+        ARCHIVE="release-$VERSION.tar.gz"
         tar -czf "$ARCHIVE" -C release .
 
         echo "ARCHIVE_NAME=$ARCHIVE" >> $GITHUB_ENV
@@ -110,6 +114,7 @@ jobs:
     # -------------------------------------------------
     - name: Add archive checksum to manifest source
       run: |
+        set -euo pipefail
         sha256sum "$ARCHIVE_NAME" >> release/SHA256SUMS.txt
 
     # -------------------------------------------------
@@ -117,9 +122,10 @@ jobs:
     # -------------------------------------------------
     - name: Generate release manifest
       run: |
+        set -euo pipefail
         cat > release/manifest.json <<EOF
         {
-          "version": "${{ inputs.version }}",
+          "version": "$VERSION",
           "mode": "${{ inputs.mode }}",
           "archive": "$ARCHIVE_NAME",
           "files": [
@@ -144,7 +150,7 @@ jobs:
     - name: Upload checksums and manifest
       uses: actions/upload-artifact@v7
       with:
-        name: release-metadata-${{ inputs.version }}
+        name: release-metadata-${{ env.VERSION }}
         path: |
           release/SHA256SUMS.txt
           release/manifest.json 
@@ -154,9 +160,10 @@ jobs:
     # -------------------------------------------------
     - name: Release mode info
       run: |
+        set -euo pipefail
         echo "=============================="
         echo "MODE: $MODE"
-        echo "VERSION: ${{ inputs.version }}"
+        echo "VERSION: $VERSION"
         echo "ARCHIVE: $ARCHIVE_NAME"
         echo "=============================="
 
@@ -178,6 +185,7 @@ jobs:
     - name: Sanity check environment
       if: ${{ inputs.mode == 'sanity' }}
       run: |
+        set -euo pipefail
         echo "Checking toolchain only..."
         git --version
         gpg --version
@@ -189,6 +197,7 @@ jobs:
     - name: Configure Git
       if: ${{ inputs.mode != 'sanity' }}
       run: |
+        set -euo pipefail
         git config user.name "${{ vars.GIT_USER_NAME }}"
         git config user.email "${{ vars.GIT_USER_EMAIL }}"
         git config user.signingkey "${{ vars.GPG_KEY_ID }}"
@@ -197,6 +206,7 @@ jobs:
     - name: Import GPG key
       if: ${{ inputs.mode != 'sanity' }}
       run: |
+        set -euo pipefail
         echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
 
     # -------------------------------------------------
@@ -205,6 +215,7 @@ jobs:
     - name: Dry-run signing validation
       if: ${{ inputs.mode == 'dry-run' }}
       run: |
+        set -euo pipefail
         echo "Testing GPG setup..."
         gpg --list-secret-keys --keyid-format=long
 
@@ -223,7 +234,7 @@ jobs:
       with:
         # Attest the snapshot archive that the -NuGet repo consumes & verifies.
         # (Add individual binary globs here if you also want per-file attestation.)
-        subject-path: release-${{ inputs.version }}.tar.gz
+        subject-path: ${{ env.ARCHIVE_NAME }}
 
     # -------------------------------------------------
     # Create signed tag for release
@@ -232,12 +243,12 @@ jobs:
       if: ${{ inputs.mode == 'release' }}
       run: |
         set -euo pipefail
-        if git rev-parse -q --verify "refs/tags/${{ inputs.version }}" >/dev/null; then
-          echo "::error::Tag ${{ inputs.version }} already exists"
+        if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+          echo "::error::Tag $VERSION already exists"
           exit 1
         fi
-        git tag -s "${{ inputs.version }}" -m "Release ${{ inputs.version }}"
-        git push origin "${{ inputs.version }}"
+        git tag -s "$VERSION" -m "Release $VERSION"
+        git push origin "$VERSION"
 
     # -------------------------------------------------
     # Create GitHub release
@@ -246,8 +257,8 @@ jobs:
       if: ${{ inputs.mode == 'release' }}
       uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
       with:
-        tag_name: ${{ inputs.version }}
+        tag_name: ${{ env.VERSION }}
         files: |
-          release-${{ inputs.version }}.tar.gz
+          ${{ env.ARCHIVE_NAME }}
           release/SHA256SUMS.txt
           release/manifest.json

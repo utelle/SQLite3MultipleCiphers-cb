@@ -75,31 +75,36 @@ jobs:
       # Resolve release asset
       # Locate release asset for SQLite3MC amalgamation
       # -------------------------------------------------
-      - name: Resolve release asset
+      - name: Resolve release asset (locked)
         id: asset
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
+        shell: bash
         run: |
           set -euo pipefail
 
           TAG="v${VERSION}"
 
-          ASSET_NAME=$(
+          echo "Resolving release for tag: $TAG"
+
+          mapfile -t ASSETS < <(
             gh release view "$TAG" \
               --repo utelle/SQLite3MultipleCiphers \
               --json assets \
               --jq '
-                .assets[]
-                | select(.name | test("^sqlite3mc-'"${VERSION}"'-sqlite-[0-9.]+-amalgamation\\.zip$"))
-                | .name
+                .assets[].name
+                | select(test("^sqlite3mc-'"${VERSION}"'-sqlite-[0-9.]+-amalgamation\\.zip$"))
               '
           )
 
-          if [ -z "$ASSET_NAME" ]; then
-            echo "No matching asset found"
+          if [ "${#ASSETS[@]}" -ne 1 ]; then
+            echo "ERROR: Expected exactly 1 matching asset, found ${#ASSETS[@]}" >&2
+            printf '%s\n' "${ASSETS[@]:-}"
             exit 1
           fi
+
+          ASSET_NAME="${ASSETS[0]}"
 
           echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
 
