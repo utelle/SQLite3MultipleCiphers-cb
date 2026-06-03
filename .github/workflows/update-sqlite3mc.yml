@@ -1,45 +1,88 @@
-name: Update SQLite3MC
+name: Update SQLite3MC (Manual)
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "SQLite3MC version (x.y.z)"
+        description: "SQLite3MC version (e.g. 2.3.4)"
         required: true
         type: string
+      mode:
+        description: "Update mode"
+        required: true
+        type: choice
+        default: dry-run
+        options:
+          - sanity
+          - dry-run
+          - update
 
 permissions:
-  contents: write
-  attestations: read
-  id-token: write
+  contents: read
+
+concurrency:
+  group: update-sqlite-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+
   update:
+    name: Update version information and SQLite3MC sources
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # commits & pushes updated SQLite3MC sources
+      attestations: read
+      id-token: write
+    env:
+      MODE: ${{ github.event.inputs.mode }}
 
     steps:
+
+      # -------------------------------------------------
+      # Checkout repository
+      # -------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
+      # -------------------------------------------------
+      # Setup Python
+      # -------------------------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # -------------------------------------------------
+      # Validate version format
+      # -------------------------------------------------
       - name: Validate version format
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid version format: $VERSION"
-            exit 1
-          fi
+          set -euo pipefail
+          python3 scripts/validate_version.py "${{ inputs.version }}"
 
+      # -------------------------------------------------
+      # Install GitHub CLI extensions
+      # -------------------------------------------------
       - name: Install GitHub CLI extensions
         run: |
           gh --version
 
+      # -------------------------------------------------
+      # Resolve release asset
+      # Locate release asset for SQLite3MC amalgamation
+      # -------------------------------------------------
       - name: Resolve release asset
         id: asset
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
+          set -euo pipefail
+
           TAG="v${VERSION}"
 
           ASSET_NAME=$(
@@ -60,11 +103,16 @@ jobs:
 
           echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
 
+      # -------------------------------------------------
+      # Download release asset for SQLite3MC amalgamation
+      # -------------------------------------------------
       - name: Download release asset
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
+          set -euo pipefail
+
           mkdir -p download
 
           gh release download "v${VERSION}" \
@@ -72,64 +120,139 @@ jobs:
             --pattern "${{ steps.asset.outputs.asset_name }}" \
             --dir download
 
+      # -------------------------------------------------
+      # Verify GitHub Attestation
+      # -------------------------------------------------
       #- name: Verify GitHub Attestation
       #  env:
       #    GH_TOKEN: ${{ github.token }}
       #  run: |
+      #    set -euo pipefail
       #    FILE="download/${{ steps.asset.outputs.asset_name }}"
       #    echo "Verifying GitHub attestation for $FILE"
       #    gh attestation verify "$FILE" \
       #      --repo utelle/SQLite3MultipleCiphers
       #    echo "Attestation verification successful"
 
-      - name: Extract archive
+      # -------------------------------------------------
+      # Extract amalgamation archive
+      # -------------------------------------------------
+      - name: Extract amalgamation archive
         run: |
+          set -euo pipefail
+
           mkdir extracted
 
           unzip \
             "download/${{ steps.asset.outputs.asset_name }}" \
             -d extracted
 
-
-      - name: Prepare sqlite3mc directory
+      # -------------------------------------------------
+      # Replace SQLite3MC source files
+      # -------------------------------------------------
+      - name: Replace SQLite3MC source files
         run: |
-          mkdir -p sqlite3mc
+          set -euo pipefail
 
-          cp extracted/sqlite3mc_amalgamation.c sqlite3mc/sqlite3.c
-          cp extracted/sqlite3mc_amalgamation.h sqlite3mc/sqlite3.h
-          cp extracted/shell3mc_amalgamation.c sqlite3mc/shell.c
-          cp extracted/sqlite3ext.h sqlite3mc/sqlite3ext.h
+          # Check that directory sqlite3mc exists
+          test -d sqlite3mc
 
-      - name: Write version.json
+          # Check that all needed files were extracted
+          test -f extracted/sqlite3mc_amalgamation.c
+          test -f extracted/sqlite3mc_amalgamation.h
+          test -f extracted/shell3mc_amalgamation.c
+          test -f extracted/sqlite3ext.h
+
+          # Check that previous versions exist
+          test -f sqlite3mc/sqlite3.c
+          test -f sqlite3mc/sqlite3.h
+          test -f sqlite3mc/shell.c
+          test -f sqlite3mc/sqlite3ext.h
+
+          # Replace source files by new versions
+          cp -T extracted/sqlite3mc_amalgamation.c sqlite3mc/sqlite3.c
+          cp -T extracted/sqlite3mc_amalgamation.h sqlite3mc/sqlite3.h
+          cp -T extracted/shell3mc_amalgamation.c sqlite3mc/shell.c
+          cp -T extracted/sqlite3ext.h sqlite3mc/sqlite3ext.h
+
+      # -------------------------------------------------
+      # Update versioninfo.json
+      # -------------------------------------------------
+      - name: Update versioninfo.json
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          set -euo pipefail
+          python3 scripts/write_version_json.py \
+            "${{ inputs.version }}" \
+            bld/version.json
 
-          cat > sqlite3mc/version.json <<EOF
-          {
-            "VersionMajor": ${MAJOR},
-            "VersionMinor": ${MINOR},
-            "VersionPatch": ${PATCH},
-            "VersionBuild": 0
-          }
-          EOF
+      # -------------------------------------------------
+      # GIT + GPG SETUP (only non-sanity)
+      # -------------------------------------------------
+      - name: Configure Git
+        if: ${{ inputs.mode != 'sanity' }}
+        run: |
+          git config user.name "${{ vars.GIT_USER_NAME }}"
+          git config user.email "${{ vars.GIT_USER_EMAIL }}"
+          git config user.signingkey "${{ vars.GPG_KEY_ID }}"
+          git config commit.gpgsign true
 
-      #- name: Commit changes
-      #  env:
-      #    VERSION: ${{ inputs.version }}
-      #  run: |
-      #    git config user.name "github-actions[bot]"
-      #    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      #    git add \
-      #      sqlite3mc/sqlite3.c \
-      #      sqlite3mc/sqlite3.h \
-      #      sqlite3mc/sqlite3ext.h \
-      #      sqlite3mc/shell.c \
-      #      sqlite3mc/version.json
-      #    if git diff --cached --quiet; then
-      #      echo "No changes detected"
-      #      exit 0
-      #    fi
-      #    git commit -m "Update SQLite3MultipleCiphers to ${VERSION}"
-      #    git push
+      # -------------------------------------------------
+      # Import GPG key (only non-sanity)
+      # -------------------------------------------------
+      - name: Import GPG key
+        if: ${{ inputs.mode != 'sanity' }}
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+      # -------------------------------------------------
+      # DRY RUN VALIDATION
+      # -------------------------------------------------
+      - name: Dry-run signing validation
+        if: ${{ inputs.mode == 'dry-run' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Listing secret keys..."
+          gpg --list-secret-keys --keyid-format=long
+
+          echo "Creating test payload..."
+          echo "dry-run-signing-test $(date -u)" > /tmp/signing-test.txt
+
+          echo "Signing payload..."
+          gpg --batch --yes --detach-sign \
+            --armor \
+            /tmp/signing-test.txt
+
+          echo "Verifying signature..."
+          gpg --verify /tmp/signing-test.txt.asc /tmp/signing-test.txt
+
+          echo "GPG signing validation successful"
+
+      # -------------------------------------------------
+      # Commit changed source files and configuration (only release)
+      # -------------------------------------------------
+      - name: Commit changes
+        if: ${{ inputs.mode == 'release' }}
+        env:
+          VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git add \
+            sqlite3mc/sqlite3.c \
+            sqlite3mc/sqlite3.h \
+            sqlite3mc/sqlite3ext.h \
+            sqlite3mc/shell.c \
+            sqlite3mc/version.json
+
+          if git diff --cached --quiet; then
+            echo "No changes detected"
+            exit 0
+          fi
+
+          git commit -S -m "Update SQLite3MC to ${VERSION}"
+          git push
