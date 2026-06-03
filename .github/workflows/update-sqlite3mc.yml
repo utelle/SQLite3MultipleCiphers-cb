@@ -183,7 +183,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          python3 scripts/write_version_json.py \
+          python3 scripts/update_versioninfo.py \
             "${{ inputs.version }}" \
             bld/version.json
 
