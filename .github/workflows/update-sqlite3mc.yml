@@ -252,7 +252,7 @@ jobs:
             sqlite3mc/sqlite3.h \
             sqlite3mc/sqlite3ext.h \
             sqlite3mc/shell.c \
-            sqlite3mc/version.json
+            bld/versioninfo.json
 
           if git diff --cached --quiet; then
             echo "No changes detected"
