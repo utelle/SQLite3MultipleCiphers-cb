@@ -128,16 +128,16 @@ jobs:
       # -------------------------------------------------
       # Verify GitHub Attestation
       # -------------------------------------------------
-      #- name: Verify GitHub Attestation
-      #  env:
-      #    GH_TOKEN: ${{ github.token }}
-      #  run: |
-      #    set -euo pipefail
-      #    FILE="download/${{ steps.asset.outputs.asset_name }}"
-      #    echo "Verifying GitHub attestation for $FILE"
-      #    gh attestation verify "$FILE" \
-      #      --repo utelle/SQLite3MultipleCiphers
-      #    echo "Attestation verification successful"
+      - name: Verify GitHub Attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FILE="download/${{ steps.asset.outputs.asset_name }}"
+          echo "Verifying GitHub attestation for $FILE"
+          gh attestation verify "$FILE" \
+            --repo utelle/SQLite3MultipleCiphers
+          echo "Attestation verification successful"
 
       # -------------------------------------------------
       # Extract amalgamation archive
