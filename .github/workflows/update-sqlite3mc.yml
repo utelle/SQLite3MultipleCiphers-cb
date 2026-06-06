@@ -237,10 +237,10 @@ jobs:
           echo "GPG signing validation successful"
 
       # -------------------------------------------------
-      # Commit changed source files and configuration (only release)
+      # Commit changed source files and configuration (only update)
       # -------------------------------------------------
       - name: Commit changes
-        if: ${{ inputs.mode == 'release' }}
+        if: ${{ inputs.mode == 'update' }}
         env:
           VERSION: ${{ inputs.version }}
         shell: bash
