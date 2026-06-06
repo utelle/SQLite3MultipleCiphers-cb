@@ -190,7 +190,7 @@ jobs:
           set -euo pipefail
           python3 scripts/update_versioninfo.py \
             "${{ inputs.version }}" \
-            bld/version.json
+            bld/versioninfo.json
 
       # -------------------------------------------------
       # GIT + GPG SETUP (only non-sanity)
