@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read       # checkout
-      actions: read        # SignPath github-token: read job + download artifact
+      #actions: read        # SignPath github-token: read job + download artifact
 
     steps:
 
