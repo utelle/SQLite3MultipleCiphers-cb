@@ -25,6 +25,8 @@ jobs:
     uses: ./.github/workflows/build-reusable.yml
     secrets:
       MUSL_CC_BIN: ${{ secrets.MUSL_CC_BIN }}
+      # Forwarded to the SignPath code-signing step inside the reusable build workflow
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
 
   release:
     needs: build
