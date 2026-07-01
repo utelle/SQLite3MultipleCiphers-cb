@@ -59,9 +59,10 @@ jobs:
     # Checksums were extracted from https://musl.cc/SHA512SUMS
     # -------------------------------------------------
     - name: Verify SHA512 checksums
+      if: startsWith(matrix.os, 'ubuntu')
       working-directory: musl-cc
       run: |
-        sha512sum --check ../scripts/musl-cross.sha512
+        sha512sum --check ../cb/scripts/musl-cross.sha512
 
     # -------------------------------------------------
     # Setup cross compilers
