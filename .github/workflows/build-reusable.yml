@@ -2,6 +2,11 @@ name: Reusable Build
 
 on:
   workflow_call:
+    inputs:
+      doSigning:
+        type: boolean
+        required: false
+        default: false
     secrets:
       MUSL_CC_BIN:
         required: true
@@ -180,7 +185,7 @@ jobs:
     # -------------------------------------------------
     - name: Upload unsigned Windows binaries
       id: upload-unsigned-win
-      if: ${{ startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
+      if: ${{ inputs.doSigning == true && startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: unsigned-windows-cb       # must NOT start with sqlite3mc- (intermediate)
@@ -191,7 +196,7 @@ jobs:
     # Submit signing request (SignPath)
     # -------------------------------------------------
     - name: Submit signing request (SignPath)
-      if: ${{ startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
+      if: ${{ inputs.doSigning == true && startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
       uses: signpath/github-action-submit-signing-request@b9d91eadd323de506c0c81cf0c7fe7438f3360fd # v2.2
       with:
         api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
@@ -205,8 +210,11 @@ jobs:
         wait-for-completion-timeout-in-seconds: 1800
         output-artifact-directory: 'signed-win'
 
+    # -------------------------------------------------
+    # Restore signed Windows binaries
+    # -------------------------------------------------
     - name: Restore signed Windows binaries
-      if: ${{ startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
+      if: ${{ inputs.doSigning == true && startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
       shell: pwsh
       run: |
         # SignPath returns the same tree structure; overlay the signed PE files

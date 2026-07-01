@@ -23,6 +23,8 @@ concurrency:
 jobs:
   build:
     uses: ./.github/workflows/build-reusable.yml
+    with:
+      doSigning: true
     secrets:
       MUSL_CC_BIN: ${{ secrets.MUSL_CC_BIN }}
       # Forwarded to the SignPath code-signing step inside the reusable build workflow
