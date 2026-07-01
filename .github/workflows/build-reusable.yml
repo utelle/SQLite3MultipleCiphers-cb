@@ -55,6 +55,15 @@ jobs:
           --pattern "*.tgz"
 
     # -------------------------------------------------
+    # Verify SHA512 checksums
+    # Checksums were extracted from https://musl.cc/SHA512SUMS
+    # -------------------------------------------------
+    - name: Verify SHA512 checksums
+      working-directory: musl-cc
+      run: |
+        sha512sum --check ../scripts/musl-cross.sha512
+
+    # -------------------------------------------------
     # Setup cross compilers
     # -------------------------------------------------
     - name: Setup cross compilers
