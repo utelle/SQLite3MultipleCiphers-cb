@@ -12,6 +12,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/build-reusable.yml
     with:
       mode: sanity
