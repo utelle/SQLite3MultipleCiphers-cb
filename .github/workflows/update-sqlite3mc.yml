@@ -65,13 +65,6 @@ jobs:
           python3 scripts/validate_version.py "${{ inputs.version }}"
 
       # -------------------------------------------------
-      # Install GitHub CLI extensions
-      # -------------------------------------------------
-      - name: Install GitHub CLI extensions
-        run: |
-          gh --version
-
-      # -------------------------------------------------
       # Resolve release asset
       # Locate release asset for SQLite3MC amalgamation
       # -------------------------------------------------
@@ -127,6 +120,10 @@ jobs:
 
       # -------------------------------------------------
       # Verify GitHub Attestation
+      # --signer-workflow pins the trusted builder identity: only artifacts
+      # attested by the reusable build-reusable.yml workflow of the
+      # SQLite3MultipleCiphers repo are accepted (not just any workflow of
+      # that repo).
       # -------------------------------------------------
       - name: Verify GitHub Attestation
         env:
@@ -136,7 +133,8 @@ jobs:
           FILE="download/${{ steps.asset.outputs.asset_name }}"
           echo "Verifying GitHub attestation for $FILE"
           gh attestation verify "$FILE" \
-            --repo utelle/SQLite3MultipleCiphers
+            --repo utelle/SQLite3MultipleCiphers \
+            --signer-workflow utelle/SQLite3MultipleCiphers/.github/workflows/build-reusable.yml
           echo "Attestation verification successful"
 
       # -------------------------------------------------
@@ -193,48 +191,21 @@ jobs:
             bld/versioninfo.json
 
       # -------------------------------------------------
-      # GIT + GPG SETUP (only non-sanity)
+      # GIT + GPG SETUP incl. dry-run validation (composite action;
+      # skipped entirely in sanity mode). The dry-run validation now uses an
+      # empty signed commit + `git verify-commit` — the same mechanism the
+      # update mode actually relies on (git commit -S), and the same
+      # validation as in release.yml.
       # -------------------------------------------------
-      - name: Configure Git
+      - name: Set up GPG signing
         if: ${{ inputs.mode != 'sanity' }}
-        run: |
-          git config user.name "${{ vars.GIT_USER_NAME }}"
-          git config user.email "${{ vars.GIT_USER_EMAIL }}"
-          git config user.signingkey "${{ vars.GPG_KEY_ID }}"
-          git config commit.gpgsign true
-
-      # -------------------------------------------------
-      # Import GPG key (only non-sanity)
-      # -------------------------------------------------
-      - name: Import GPG key
-        if: ${{ inputs.mode != 'sanity' }}
-        run: |
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-
-      # -------------------------------------------------
-      # DRY RUN VALIDATION
-      # -------------------------------------------------
-      - name: Dry-run signing validation
-        if: ${{ inputs.mode == 'dry-run' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "Listing secret keys..."
-          gpg --list-secret-keys --keyid-format=long
-
-          echo "Creating test payload..."
-          echo "dry-run-signing-test $(date -u)" > /tmp/signing-test.txt
-
-          echo "Signing payload..."
-          gpg --batch --yes --detach-sign \
-            --armor \
-            /tmp/signing-test.txt
-
-          echo "Verifying signature..."
-          gpg --verify /tmp/signing-test.txt.asc /tmp/signing-test.txt
-
-          echo "GPG signing validation successful"
+        uses: ./.github/actions/setup-signing
+        with:
+          git-user-name: ${{ vars.GIT_USER_NAME }}
+          git-user-email: ${{ vars.GIT_USER_EMAIL }}
+          gpg-key-id: ${{ vars.GPG_KEY_ID }}
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          validate: ${{ inputs.mode == 'dry-run' }}
 
       # -------------------------------------------------
       # Commit changed source files and configuration (only update)

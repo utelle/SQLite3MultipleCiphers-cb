@@ -3,7 +3,11 @@ updates:
   # Keeps the Action commit SHAs pinned in workflows up to date.
   # Dependabot updates both the SHA and the "# vX" comment.
   - package-ecosystem: "github-actions"
-    directory: "/"
+    # "/" covers .github/workflows; the glob additionally covers the `uses:`
+    # references inside the local composite actions under .github/actions/.
+    directories:
+      - "/"
+      - "/.github/actions/*"
     schedule:
       interval: "weekly"
     commit-message:

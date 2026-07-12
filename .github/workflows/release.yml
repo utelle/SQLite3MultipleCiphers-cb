@@ -21,23 +21,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
+  # -------------------------------------------------------------------
+  # TRUSTED BUILDER (reusable workflow): builds the binaries, signs the
+  # Windows binaries via SignPath and generates the SLSA build provenance,
+  # isolated from this caller workflow.
+  #
+  # Union grant: the permissions below are the UNION of what the jobs inside
+  # build-reusable.yml need (a called workflow can only downgrade, never
+  # elevate, the caller's grant). Only the assemble job inside the reusable
+  # workflow actually uses id-token/attestations: write; the publish job
+  # below never holds them.
+  # -------------------------------------------------------------------
   build:
+    permissions:
+      contents: read
+      actions: read         # SignPath artifact hand-off in the build job
+      id-token: write       # assemble job: OIDC for keyless Sigstore signing
+      attestations: write   # assemble job: write build provenance attestation
     uses: ./.github/workflows/build-reusable.yml
     with:
-      doSigning: true
+      mode: ${{ inputs.mode }}
     secrets:
       MUSL_CC_BIN: ${{ secrets.MUSL_CC_BIN }}
       # Forwarded to the SignPath code-signing step inside the reusable build workflow
       SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
 
-  release:
+  # -------------------------------------------------------------------
+  # PUBLISHER: consumes the already-built, already-attested release bundle
+  # and publishes it (signed tag + GitHub release). No attestation here.
+  # -------------------------------------------------------------------
+  publish:
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
-      contents: write
-      id-token: write       # OIDC token for keyless Sigstore signing
-      attestations: write   # write build provenance attestation
+      contents: write       # create signed tag + GitHub release
 
     env:
       MODE: ${{ inputs.mode }}
@@ -52,112 +71,48 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Read version from versioninfo.json
-      id: version
+    # -------------------------------------------------
+    # Read version (composite action; exports $VERSION)
+    # -------------------------------------------------
+    - name: Read version
+      uses: ./.github/actions/read-version
+
+    # -------------------------------------------------
+    # Resolve archive name
+    # Runs in ALL modes (also sanity, where no bundle exists) so that
+    # $ARCHIVE_NAME is always defined for the mode info step below.
+    # -------------------------------------------------
+    - name: Resolve archive name
       run: |
         set -euo pipefail
-
-        VERSION_MAJOR=$(jq -r '.VersionMajor' bld/versioninfo.json)
-        VERSION_MINOR=$(jq -r '.VersionMinor' bld/versioninfo.json)
-        VERSION_PATCH=$(jq -r '.VersionPatch' bld/versioninfo.json)
-
-        # For actual releases only major, minor, and patch are used
-        VERSION="v${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
-
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-        #echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-        echo "Resolved version: $VERSION"
+        echo "ARCHIVE_NAME=release-$VERSION.tar.gz" >> $GITHUB_ENV
 
     # -------------------------------------------------
-    # DOWNLOAD BUILD ARTIFACTS
+    # DOWNLOAD RELEASE BUNDLE (built & attested by the trusted builder)
     # -------------------------------------------------
-    - name: Download artifacts
+    - name: Download release bundle
+      if: ${{ inputs.mode != 'sanity' }}
       uses: actions/download-artifact@v8
       with:
-        pattern: bin-*
-        merge-multiple: true
-        path: release
+        name: release-bundle
+        path: bundle
 
     # -------------------------------------------------
-    # FIX PERMISSIONS (shared libs etc.)
+    # STAGE RELEASE BUNDLE
+    # upload-artifact keeps paths relative to their common root, so the
+    # bundle contains release-<version>.tar.gz at its root plus
+    # release/SHA256SUMS.txt and release/manifest.json. Restore exactly
+    # the layout the gh-release files list below expects.
     # -------------------------------------------------
-    - name: Fix permissions
+    - name: Stage release bundle
+      if: ${{ inputs.mode != 'sanity' }}
       run: |
         set -euo pipefail
-        find ./release -type f \( -name "*.so" -o -name "*.dylib" \) -exec chmod 0775 {} +
-
-    # -------------------------------------------------
-    # CHECKSUMS (for individual files)
-    # -------------------------------------------------
-    - name: Generate checksums
-      run: |
-        set -euo pipefail
-        cd release
-        find . -type f \
-          ! -name "SHA256SUMS.txt" \
-            -print0 \
-          | sort -z \
-          | xargs -0 sha256sum \
-          | sed 's|^\([^ ]*\)  \./|\1  |' \
-          > SHA256SUMS.txt
-
-    # -------------------------------------------------
-    # RELEASE SNAPSHOT ARCHIVE
-    # -------------------------------------------------
-    - name: Create release snapshot archive
-      run: |
-        set -euo pipefail
-        ARCHIVE="release-$VERSION.tar.gz"
-        tar -czf "$ARCHIVE" -C release .
-
-        echo "ARCHIVE_NAME=$ARCHIVE" >> $GITHUB_ENV
-
-    # -------------------------------------------------
-    # CHECKSUM OF SNAPSHOT ARCHIVE (important!)
-    # -------------------------------------------------
-    - name: Add archive checksum to manifest source
-      run: |
-        set -euo pipefail
-        sha256sum "$ARCHIVE_NAME" >> release/SHA256SUMS.txt
-
-    # -------------------------------------------------
-    # MANIFEST GENERATION
-    # -------------------------------------------------
-    - name: Generate release manifest
-      run: |
-        set -euo pipefail
-        cat > release/manifest.json <<EOF
-        {
-          "version": "$VERSION",
-          "mode": "${{ inputs.mode }}",
-          "archive": "$ARCHIVE_NAME",
-          "files": [
-        EOF
-
-        find release -type f \
-          ! -name "manifest.json" \
-          ! -name "SHA256SUMS.txt" \
-          | sed 's|release/||' \
-          | sort \
-          | sed 's/.*/"&"/' \
-          | paste -sd "," - \
-          >> release/manifest.json
-
-        echo "" >> release/manifest.json
-        echo "  ]" >> release/manifest.json
-        echo "}" >> release/manifest.json
-
-    # -------------------------------------------------
-    # UPLOAD CHECKSUMS AND MANIFEST
-    # -------------------------------------------------
-    - name: Upload checksums and manifest
-      uses: actions/upload-artifact@v7
-      with:
-        name: release-metadata-${{ env.VERSION }}
-        path: |
-          release/SHA256SUMS.txt
-          release/manifest.json 
+        mkdir -p release
+        mv "bundle/$ARCHIVE_NAME" "$ARCHIVE_NAME"
+        mv bundle/release/SHA256SUMS.txt release/
+        mv bundle/release/manifest.json release/
+        ls -l "$ARCHIVE_NAME" release/
 
     # -------------------------------------------------
     # MODE INFO
@@ -196,49 +151,18 @@ jobs:
         echo "Sanity check complete."
 
     # -------------------------------------------------
-    # GIT + GPG SETUP (only non-sanity)
+    # GIT + GPG SETUP incl. dry-run validation (composite action;
+    # skipped entirely in sanity mode)
     # -------------------------------------------------
-    - name: Configure Git
+    - name: Set up GPG signing
       if: ${{ inputs.mode != 'sanity' }}
-      run: |
-        set -euo pipefail
-        git config user.name "${{ vars.GIT_USER_NAME }}"
-        git config user.email "${{ vars.GIT_USER_EMAIL }}"
-        git config user.signingkey "${{ vars.GPG_KEY_ID }}"
-        git config commit.gpgsign true
-
-    - name: Import GPG key
-      if: ${{ inputs.mode != 'sanity' }}
-      run: |
-        set -euo pipefail
-        echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-
-    # -------------------------------------------------
-    # DRY RUN VALIDATION
-    # -------------------------------------------------
-    - name: Dry-run signing validation
-      if: ${{ inputs.mode == 'dry-run' }}
-      run: |
-        set -euo pipefail
-        echo "Testing GPG setup..."
-        gpg --list-secret-keys --keyid-format=long
-
-        echo "Testing commit signing..."
-        git commit --allow-empty -S -m "dry-run signing test"
-
-        echo "Verifying signature..."
-        git log -1 --show-signature
-
-    # -------------------------------------------------
-    # GENERATE SLSA-ALIGNED BUILD PROVENANCE
-    # -------------------------------------------------
-    - name: Generate build provenance
-      if: ${{ inputs.mode == 'release' }}
-      uses: actions/attest-build-provenance@v4
+      uses: ./.github/actions/setup-signing
       with:
-        # Attest the snapshot archive that the -NuGet repo consumes & verifies.
-        # (Add individual binary globs here if you also want per-file attestation.)
-        subject-path: ${{ env.ARCHIVE_NAME }}
+        git-user-name: ${{ vars.GIT_USER_NAME }}
+        git-user-email: ${{ vars.GIT_USER_EMAIL }}
+        gpg-key-id: ${{ vars.GPG_KEY_ID }}
+        gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+        validate: ${{ inputs.mode == 'dry-run' }}
 
     # -------------------------------------------------
     # Create signed tag for release

@@ -1,0 +1,47 @@
+# Composite action: common build preparation for the `build` and `build-wasm`
+# jobs (previously four duplicated steps per job: Setup .NET, Generate script,
+# Update permissions, Clean output directory).
+#
+# Note: the build jobs check the repo out into the cb/ subdirectory, so this
+# action is referenced as `./cb/.github/actions/prepare-build`.
+# The clean-output step uses a single pwsh step for all runners (previously
+# two if-guarded variants: `rm -fr bin` vs. `rm bin -r -fo`).
+
+name: Prepare build
+description: >-
+  Set up .NET, generate the platform build scripts (dotnet run in bld/),
+  make them executable and clean the output directory.
+
+inputs:
+  bld-dir:
+    description: Path of the bld/ directory relative to the workspace
+    required: false
+    default: cb/bld
+  dotnet-version:
+    description: .NET SDK version for the build script generator
+    required: false
+    default: '8.0'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - name: Generate script
+      shell: bash
+      working-directory: ${{ inputs.bld-dir }}
+      run: dotnet run
+
+    - name: Update permissions
+      shell: bash
+      working-directory: ${{ inputs.bld-dir }}
+      run: chmod +x *.sh
+
+    - name: Clean output directory
+      shell: pwsh
+      working-directory: ${{ inputs.bld-dir }}
+      run: |
+        if (Test-Path bin) { Remove-Item bin -Recurse -Force }

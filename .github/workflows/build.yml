@@ -8,6 +8,12 @@ on:
 
 jobs:
   build:
+    # CI smoke build — no signing, no attestation
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/build-reusable.yml
+    with:
+      mode: sanity
     secrets:
       MUSL_CC_BIN: ${{ secrets.MUSL_CC_BIN }}

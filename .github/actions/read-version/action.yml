@@ -1,0 +1,38 @@
+# Composite action: resolve the release version from bld/versioninfo.json.
+#
+# Replaces the identical "Read version from versioninfo.json" steps in
+# build-reusable.yml (assemble job) and release.yml (publish job). The jobs
+# using it check the repo out WITHOUT the cb/ path prefix, so the reference
+# is `./.github/actions/read-version`. Exposes the version both as $VERSION
+# (via $GITHUB_ENV) and as an action output.
+
+name: Read version
+description: >-
+  Read VersionMajor/Minor/Patch from bld/versioninfo.json and export
+  VERSION=v<major>.<minor>.<patch> to $GITHUB_ENV and as output.
+
+outputs:
+  version:
+    description: Resolved version (v<major>.<minor>.<patch>)
+    value: ${{ steps.version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Read version from versioninfo.json
+      id: version
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        VERSION_MAJOR=$(jq -r '.VersionMajor' bld/versioninfo.json)
+        VERSION_MINOR=$(jq -r '.VersionMinor' bld/versioninfo.json)
+        VERSION_PATCH=$(jq -r '.VersionPatch' bld/versioninfo.json)
+
+        # For actual releases only major, minor, and patch are used
+        VERSION="v${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
+
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+        echo "Resolved version: $VERSION"

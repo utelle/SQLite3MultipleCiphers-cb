@@ -1,12 +1,23 @@
 name: Reusable Build
 
+# Notes:
+# - Recurring step sequences live in local composite actions under
+#   .github/actions/ (prepare-build, read-version, signpath-sign).
+#   The build jobs check the repo out into the cb/ subdirectory, so they
+#   reference the composites as ./cb/.github/actions/<name>; the assemble
+#   job checks out normally and uses ./.github/actions/<name>.
+# - The assemble job below is the trusted builder: it creates checksums,
+#   manifest and the release snapshot archive AND generates the SLSA build
+#   provenance inside this reusable workflow, isolated from the caller.
+
 on:
   workflow_call:
     inputs:
-      doSigning:
-        type: boolean
+      mode:
+        description: "Release mode (sanity | dry-run | release); sanity = no signing, no attestation"
+        type: string
         required: false
-        default: false
+        default: 'sanity'
     secrets:
       MUSL_CC_BIN:
         required: true
@@ -29,7 +40,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read       # checkout
-      #actions: read        # SignPath github-token: read job + download artifact
+      actions: read        # SignPath github-token: read job + download artifact
 
     steps:
 
@@ -81,14 +92,6 @@ jobs:
         ndk-version: r26d
 
     # -------------------------------------------------
-    # Setup .Net environment
-    # -------------------------------------------------
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: 8.0
-
-    # -------------------------------------------------
     # Show installed Visual Studio instances
     # -------------------------------------------------
     - name: Show installed Visual Studio instances
@@ -98,11 +101,11 @@ jobs:
       shell: pwsh
 
     # -------------------------------------------------
-    # Generate build scripts
+    # Setup .NET, generate build scripts, update permissions,
+    # clean output directory (composite action)
     # -------------------------------------------------
-    - name: Generate script
-      run: dotnet run
-      working-directory: cb/bld
+    - name: Prepare build
+      uses: ./cb/.github/actions/prepare-build
 
 #    - name: Show contents of .linkargs file
 #      if: startsWith(matrix.os, 'windows')
@@ -111,29 +114,6 @@ jobs:
 #        powershell -c "Format-Hex cb\bld\win_sqlite3mc_v143_plain_x64.rc | Select-Object -First 50"
 #        type cb\bld\win_sqlite3mc_v143_plain_x64.linkargs
 #        type cb\bld\win_sqlite3mc_v143_plain_x86.linkargs
-
-    # -------------------------------------------------
-    # Update permissions for build scripts
-    # -------------------------------------------------
-    - name: Update permissions
-      run: chmod +x *.sh 
-      working-directory: cb/bld
-
-    # -------------------------------------------------
-    # Clean output directory for Linux and macOS builds
-    # -------------------------------------------------
-    - name: Clean output directory
-      if: startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')
-      run: rm -fr bin
-      working-directory: cb/bld
-
-    # -------------------------------------------------
-    # Checkout repository for Windows builds
-    # -------------------------------------------------
-    - name: Clean output directory
-      if: startsWith(matrix.os, 'windows')
-      run: rm bin -r -fo
-      working-directory: cb/bld
 
     # -------------------------------------------------
     # Build Linux binaries
@@ -191,46 +171,38 @@ jobs:
       working-directory: cb/bld
 
     # -------------------------------------------------
-    # Upload unsigned Windows binaries
+    # Sign Windows binaries (SignPath composite action)
+    # Wraps: upload unsigned -> submit signing request -> download signed.
+    # No-op in 'sanity' mode. The path is passed verbatim to upload-artifact,
+    # so the uploaded ZIP layout keeps matching the portal-side artifact
+    # configuration 'windows-binaries-cb'.
     # -------------------------------------------------
-    - name: Upload unsigned Windows binaries
-      id: upload-unsigned-win
-      if: ${{ inputs.doSigning == true && startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-      with:
-        name: unsigned-windows-cb       # must NOT start with sqlite3mc- (intermediate)
-        path: cb/bld/bin
-        if-no-files-found: error
-
-    # -------------------------------------------------
-    # Submit signing request (SignPath)
-    # -------------------------------------------------
-    - name: Submit signing request (SignPath)
-      if: ${{ inputs.doSigning == true && startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
-      uses: signpath/github-action-submit-signing-request@b9d91eadd323de506c0c81cf0c7fe7438f3360fd # v2.2
-      with:
-        api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
-        organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
-        project-slug: 'SQLite3MultipleCiphers'
-        artifact-configuration-slug: 'windows-binaries-cb'
-        signing-policy-slug: ${{ inputs.mode == 'release' && 'release-signing' || 'test-signing' }}
-        github-artifact-id: '${{ steps.upload-unsigned-win.outputs.artifact-id }}'
-        wait-for-completion: true
-        # release-signing typically requires manual approval -> wait longer
-        wait-for-completion-timeout-in-seconds: 1800
-        output-artifact-directory: 'signed-win'
+    # Disabled, until SignPath review for SQLite3MultipleCiphers repo is completed
+    #- name: Sign Windows binaries (SignPath)
+    #  if: ${{ startsWith(matrix.os, 'windows') }}
+    #  uses: ./cb/.github/actions/signpath-sign
+    #  with:
+    #    mode: ${{ inputs.mode }}
+    #    artifact-name: unsigned-windows-cb       # must NOT start with #sqlite3mc- (intermediate)
+    #    path: cb/bld/bin
+    #    artifact-configuration-slug: windows-binaries-cb
+    #    project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+    #    organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+    #    api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+    #    output-directory: signed-win
 
     # -------------------------------------------------
     # Restore signed Windows binaries
     # -------------------------------------------------
-    - name: Restore signed Windows binaries
-      if: ${{ inputs.doSigning == true && startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
-      shell: pwsh
-      run: |
-        # SignPath returns the same tree structure; overlay the signed PE files
-        # back over cb/bld/bin so "Upload artifacts" carries the signed ones.
-        Copy-Item signed-win/* cb/bld/bin/ -Recurse -Force
-        Get-ChildItem -Recurse cb/bld/bin -Include *.dll,*.exe | Select-Object FullName
+    # Disabled, until SignPath review for SQLite3MultipleCiphers repo is completed
+    #- name: Restore signed Windows binaries
+    #  if: ${{ startsWith(matrix.os, 'windows') && inputs.mode != 'sanity' }}
+    #  shell: pwsh
+    #  run: |
+    #    # SignPath returns the same tree structure; overlay the signed PE files
+    #    # back over cb/bld/bin so "Upload artifacts" carries the signed ones.
+    #    Copy-Item signed-win/* cb/bld/bin/ -Recurse -Force
+    #    Get-ChildItem -Recurse cb/bld/bin -Include *.dll,*.exe | Select-Object FullName
 
     # -------------------------------------------------
     # Upload artifacts
@@ -244,14 +216,15 @@ jobs:
   build-wasm:
     strategy:
       fail-fast: false
+      # Plain YAML maps instead of JSON-in-strings: no fromJSON() needed below.
       matrix:
         config:
           # Don't forget to add a download-artifact steps in test and publish
-        - '{ "tfm": "net6.0", "emsdk": "2.0.23" }' # eol: 2024-11-12
-        - '{ "tfm": "net7.0", "emsdk": "3.1.12" }' # eol: 2024-05-14
-        - '{ "tfm": "net8.0", "emsdk": "3.1.34" }' # eol: 2026-11-10
-        - '{ "tfm": "net9.0", "emsdk": "3.1.56" }' # eol: 2026-11-10
-        - '{ "tfm": "net10.0", "emsdk": "3.1.56" }' # eol: 2028-11-14
+        - { tfm: 'net6.0', emsdk: '2.0.23' } # eol: 2024-11-12
+        - { tfm: 'net7.0', emsdk: '3.1.12' } # eol: 2024-05-14
+        - { tfm: 'net8.0', emsdk: '3.1.34' } # eol: 2026-11-10
+        - { tfm: 'net9.0', emsdk: '3.1.56' } # eol: 2026-11-10
+        - { tfm: 'net10.0', emsdk: '3.1.56' } # eol: 2028-11-14
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 
@@ -271,36 +244,14 @@ jobs:
     - name: Setup Emscripten
       uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
       with:
-        version: ${{ fromJSON(matrix.config).emsdk }}
+        version: ${{ matrix.config.emsdk }}
 
     # -------------------------------------------------
-    # Setup .Net
+    # Setup .NET, generate build scripts, update permissions,
+    # clean output directory (composite action)
     # -------------------------------------------------
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: 8.0
-
-    # -------------------------------------------------
-    # Generate build script
-    # -------------------------------------------------
-    - name: Generate script
-      run: dotnet run
-      working-directory: cb/bld
-
-    # -------------------------------------------------
-    # Update permissions for build scripts
-    # -------------------------------------------------
-    - name: Update permissions
-      run: chmod +x *.sh
-      working-directory: cb/bld
-
-    # -------------------------------------------------
-    # Clean output directory
-    # -------------------------------------------------
-    - name: Clean output directory
-      run: rm -fr bin
-      working-directory: cb/bld
+    - name: Prepare build
+      uses: ./cb/.github/actions/prepare-build
 
     # -------------------------------------------------
     # Build WASM binaries
@@ -310,7 +261,7 @@ jobs:
         #!/bin/bash
         set -e
         for f in wasm_*.sh; do
-          bash "$f" ${{ fromJSON(matrix.config).tfm }}
+          bash "$f" ${{ matrix.config.tfm }}
         done
       working-directory: cb/bld
 
@@ -320,5 +271,160 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: bin-wasm-${{ fromJSON(matrix.config).tfm }}
+        name: bin-wasm-${{ matrix.config.tfm }}
         path: cb/bld/bin
+
+  # ===================================================================
+  # TRUSTED BUILDER — assemble the release bundle AND generate the SLSA
+  # build provenance here, INSIDE the reusable workflow, isolated from the
+  # caller (release.yml). Only this job holds `id-token: write` /
+  # `attestations: write`; the publishing job never touches the attestation.
+  # The signer identity recorded in the Sigstore certificate is THIS
+  # reusable workflow, so consumers can pin it via
+  # `gh attestation verify --signer-workflow`.
+  # Skipped entirely in 'sanity' mode (CI smoke builds produce no bundle).
+  # ===================================================================
+  assemble:
+    name: Assemble & attest release bundle (trusted builder)
+    if: ${{ inputs.mode != 'sanity' }}
+    needs: [build, build-wasm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write       # OIDC token for keyless Sigstore signing
+      attestations: write   # write build provenance attestation
+
+    steps:
+
+    # -------------------------------------------------
+    # Checkout repository
+    # (no cb/ path prefix here -> composites are ./.github/actions/<name>)
+    # -------------------------------------------------
+    - name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    # -------------------------------------------------
+    # Read version (composite action; exports $VERSION)
+    # -------------------------------------------------
+    - name: Read version
+      uses: ./.github/actions/read-version
+
+    # -------------------------------------------------
+    # DOWNLOAD BUILD ARTIFACTS
+    # -------------------------------------------------
+    - name: Download artifacts
+      uses: actions/download-artifact@v8
+      with:
+        pattern: bin-*
+        merge-multiple: true
+        path: release
+
+    # -------------------------------------------------
+    # FIX PERMISSIONS (shared libs etc.)
+    # -------------------------------------------------
+    - name: Fix permissions
+      run: |
+        set -euo pipefail
+        find ./release -type f \( -name "*.so" -o -name "*.dylib" \) -exec chmod 0775 {} +
+
+    # -------------------------------------------------
+    # CHECKSUMS (for individual files)
+    # -------------------------------------------------
+    - name: Generate checksums
+      run: |
+        set -euo pipefail
+        cd release
+        find . -type f \
+          ! -name "SHA256SUMS.txt" \
+            -print0 \
+          | sort -z \
+          | xargs -0 sha256sum \
+          | sed 's|^\([^ ]*\)  \./|\1  |' \
+          > SHA256SUMS.txt
+
+    # -------------------------------------------------
+    # RELEASE SNAPSHOT ARCHIVE
+    # -------------------------------------------------
+    - name: Create release snapshot archive
+      run: |
+        set -euo pipefail
+        ARCHIVE="release-$VERSION.tar.gz"
+        tar -czf "$ARCHIVE" -C release .
+
+        echo "ARCHIVE_NAME=$ARCHIVE" >> $GITHUB_ENV
+
+    # -------------------------------------------------
+    # CHECKSUM OF SNAPSHOT ARCHIVE (important!)
+    # -------------------------------------------------
+    - name: Add archive checksum to manifest source
+      run: |
+        set -euo pipefail
+        sha256sum "$ARCHIVE_NAME" >> release/SHA256SUMS.txt
+
+    # -------------------------------------------------
+    # MANIFEST GENERATION
+    # -------------------------------------------------
+    - name: Generate release manifest
+      run: |
+        set -euo pipefail
+        cat > release/manifest.json <<EOF
+        {
+          "version": "$VERSION",
+          "mode": "${{ inputs.mode }}",
+          "archive": "$ARCHIVE_NAME",
+          "files": [
+        EOF
+
+        find release -type f \
+          ! -name "manifest.json" \
+          ! -name "SHA256SUMS.txt" \
+          | sed 's|release/||' \
+          | sort \
+          | sed 's/.*/"&"/' \
+          | paste -sd "," - \
+          >> release/manifest.json
+
+        echo "" >> release/manifest.json
+        echo "  ]" >> release/manifest.json
+        echo "}" >> release/manifest.json
+
+    # -------------------------------------------------
+    # UPLOAD CHECKSUMS AND MANIFEST
+    # -------------------------------------------------
+    - name: Upload checksums and manifest
+      uses: actions/upload-artifact@v7
+      with:
+        name: release-metadata-${{ env.VERSION }}
+        path: |
+          release/SHA256SUMS.txt
+          release/manifest.json
+
+    # -------------------------------------------------
+    # GENERATE SLSA-ALIGNED BUILD PROVENANCE
+    # -------------------------------------------------
+    - name: Generate build provenance
+      if: ${{ inputs.mode == 'release' }}
+      uses: actions/attest-build-provenance@v4
+      with:
+        # Attest the snapshot archive that the -NuGet repo consumes & verifies.
+        # (Add individual binary globs here if you also want per-file attestation.)
+        subject-path: ${{ env.ARCHIVE_NAME }}
+
+    # -------------------------------------------------
+    # UPLOAD RELEASE BUNDLE
+    # Hands the assembled (and, in release mode, attested) files to the
+    # publishing job in release.yml. The caller cannot alter the provenance.
+    # -------------------------------------------------
+    - name: Upload release bundle
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: release-bundle
+        if-no-files-found: error
+        retention-days: 1
+        path: |
+          ${{ env.ARCHIVE_NAME }}
+          release/SHA256SUMS.txt
+          release/manifest.json
