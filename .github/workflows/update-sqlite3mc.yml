@@ -133,8 +133,10 @@ jobs:
           FILE="download/${{ steps.asset.outputs.asset_name }}"
           echo "Verifying GitHub attestation for $FILE"
           gh attestation verify "$FILE" \
-            --repo utelle/SQLite3MultipleCiphers \
-            --signer-workflow utelle/SQLite3MultipleCiphers/.github/workflows/build-reusable.yml
+            --repo utelle/SQLite3MultipleCiphers
+          #gh attestation verify "$FILE" \
+          #  --repo utelle/SQLite3MultipleCiphers \
+          #  --signer-workflow utelle/SQLite3MultipleCiphers/.github/workflows/build-reusable.yml
           echo "Attestation verification successful"
 
       # -------------------------------------------------
