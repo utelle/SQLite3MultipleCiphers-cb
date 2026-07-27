@@ -1369,10 +1369,16 @@ public static class CB
         defines["SQLITE_ENABLE_FTS4"] = null;
         defines["SQLITE_ENABLE_FTS5"] = null;
         defines["SQLITE_ENABLE_JSON1"] = null;
+        defines["SQLITE_ENABLE_CARRAY"] = null;
+        defines["SQLITE_ENABLE_GEOPOLY"] = null;
         defines["SQLITE_ENABLE_MATH_FUNCTIONS"] = null;
+        defines["SQLITE_ENABLE_PERCENTILE"] = null;
+        defines["SQLITE_ENABLE_PREUPDATE_HOOK"] = null;
         defines["SQLITE_ENABLE_RTREE"] = null;
+        defines["SQLITE_ENABLE_SESSION"] = null;
         defines["SQLITE_ENABLE_SNAPSHOT"] = null;
         defines["SQLITE_DEFAULT_FOREIGN_KEYS"] = "1";
+        defines["SQLITE_LIKE_DOESNT_MATCH_BLOBS"] = null;
     }
 
     static void add_win_sqlite3_defines(Dictionary<string,string> defines)
