@@ -7,3 +7,9 @@ The scripts in this repo are covered under the MIT License.
 The scripts are based on the work of [Eric Sink](https://github.com/ericsink/cb). However, parts irrelevant to _SQLite3MC_ were mostly removed, and the build process itself was streamlined.
 
 The original scripts were covered under the Apache License v2.
+
+## Sponsors/Supporters
+
+<a href="https://signpath.io" title="SignPath"><img src="signpath-logo.svg" width="200"></a>
+
+**Free code signing on Windows provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org)**
